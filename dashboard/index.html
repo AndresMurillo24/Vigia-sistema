@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigía · Panel de monitoreo</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marca">
+      <img src="logo.svg" alt="" width="40" height="40">
+      <div><p class="sobre">Plataforma central</p><h1>Vigía · Panel de monitoreo</h1></div>
+    </div>
+    <span class="chip" id="conexion">Conectando…</span>
+  </header>
+
+  <div class="aviso" id="aviso" role="alert" hidden>
+    <strong>ALERTA SÍSMICA</strong>
+    <span id="avisoTexto"></span>
+  </div>
+
+  <main>
+    <section class="kpis" aria-label="Resumen">
+      <div class="kpi"><span>Dispositivos en línea</span><strong id="kEnLinea">–</strong></div>
+      <div class="kpi"><span>En alerta ahora</span><strong id="kAlerta">–</strong></div>
+      <div class="kpi"><span>Eventos recientes</span><strong id="kEventos">–</strong></div>
+      <div class="kpi"><span>Umbral de detección</span><strong id="kUmbral">–</strong></div>
+    </section>
+
+    <section class="tarjeta mapa">
+      <header><h2>Red de dispositivos</h2><p>Toca un punto para ver sus lecturas</p></header>
+      <svg id="mapa" viewBox="0 0 420 510" role="img" aria-label="Mapa de Colombia con los dispositivos Vigía"></svg>
+      <ul class="leyenda"><li><i class="ok"></i>En línea</li><li><i class="al"></i>Alerta</li><li><i class="off"></i>Desconectado</li><li><i class="epi"></i>Epicentro estimado</li></ul>
+    </section>
+
+    <section class="tarjeta grafica">
+      <header><h2 id="gTitulo">Lecturas en vivo</h2><p id="gSub">Selecciona un dispositivo</p></header>
+      <div class="lienzo"><canvas id="grafica" aria-label="Gráfica de aceleración del dispositivo seleccionado"></canvas></div>
+      <dl class="ejes"><div><dt>X</dt><dd id="vx">–</dd></div><div><dt>Y</dt><dd id="vy">–</dd></div><div><dt>Z</dt><dd id="vz">–</dd></div><div><dt>|a|</dt><dd id="vm">–</dd></div></dl>
+    </section>
+
+    <section class="tarjeta simulacion" id="cajaSimulacion">
+      <header><h2>Simular un sismo</h2><p>Solo para pruebas: los dispositivos simulados sentirán la sacudida según su distancia</p></header>
+      <form id="formSimulacion">
+        <label>Epicentro
+          <select id="epicentro">
+            <option value="4.37,-73.21">Paratebueno, Cundinamarca</option>
+            <option value="6.82,-73.03">Mesa de los Santos, Santander</option>
+            <option value="3.88,-77.40">Costa Pacífica, Valle</option>
+            <option value="6.25,-75.70">Occidente de Antioquia</option>
+          </select>
+        </label>
+        <label>Magnitud <output id="magTxt">6,3</output>
+          <input type="range" id="magnitud" min="4" max="7.5" step="0.1" value="6.3">
+        </label>
+        <button type="submit" class="boton">Simular sismo</button>
+        <p class="estado" id="simEstado" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="tarjeta lista">
+      <header><h2>Dispositivos</h2></header>
+      <table>
+        <thead><tr><th scope="col">Dispositivo</th><th scope="col">Ciudad</th><th scope="col">Estado</th><th scope="col" class="num">|a| (g)</th></tr></thead>
+        <tbody id="tablaDispositivos"></tbody>
+      </table>
+    </section>
+
+    <section class="tarjeta historial">
+      <header><h2>Alertas confirmadas</h2></header>
+      <ol id="listaAlertas" class="registro"></ol>
+      <header><h2>Eventos de los dispositivos</h2></header>
+      <ol id="listaEventos" class="registro"></ol>
+    </section>
+  </main>
+
+  <script src="/vendor/chart.js/chart.umd.js"></script>
+  <script src="mapa-colombia.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

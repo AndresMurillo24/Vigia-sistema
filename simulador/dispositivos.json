@@ -1,0 +1,98 @@
+[
+  {
+    "id": "bog-chapinero",
+    "nombre": "Casa Chapinero",
+    "ciudad": "Bogotá",
+    "lat": 4.6486,
+    "lon": -74.0628,
+    "token": "ab29686488fb130e727d19b92bf0b84b"
+  },
+  {
+    "id": "bog-suba",
+    "nombre": "Casa Suba",
+    "ciudad": "Bogotá",
+    "lat": 4.7411,
+    "lon": -74.0836,
+    "token": "85b81262b2b1e34241b76b4a19417503"
+  },
+  {
+    "id": "bog-kennedy",
+    "nombre": "Casa Kennedy",
+    "ciudad": "Bogotá",
+    "lat": 4.6268,
+    "lon": -74.1514,
+    "token": "b8e5352f9754207d6d86e17f3087e87f"
+  },
+  {
+    "id": "soacha-centro",
+    "nombre": "Casa Soacha",
+    "ciudad": "Soacha",
+    "lat": 4.5793,
+    "lon": -74.2168,
+    "token": "1f7ca2980188b8abba6e4ae1ec9aa823"
+  },
+  {
+    "id": "villavicencio-centro",
+    "nombre": "Casa Villavicencio",
+    "ciudad": "Villavicencio",
+    "lat": 4.142,
+    "lon": -73.6266,
+    "token": "7ae600c223c3dc76f1b7bc41dbdd8d32"
+  },
+  {
+    "id": "paratebueno-centro",
+    "nombre": "Casa Paratebueno",
+    "ciudad": "Paratebueno",
+    "lat": 4.375,
+    "lon": -73.214,
+    "token": "7997c25bcb54c5a43ab8c351150d56cd"
+  },
+  {
+    "id": "tunja-centro",
+    "nombre": "Casa Tunja",
+    "ciudad": "Tunja",
+    "lat": 5.5353,
+    "lon": -73.3678,
+    "token": "cc59c0bcdf49461eb44f45336be11818"
+  },
+  {
+    "id": "ibague-centro",
+    "nombre": "Casa Ibagué",
+    "ciudad": "Ibagué",
+    "lat": 4.4389,
+    "lon": -75.2322,
+    "token": "64d81edbfc0acbff1bb5d49b784ea606"
+  },
+  {
+    "id": "medellin-poblado",
+    "nombre": "Casa El Poblado",
+    "ciudad": "Medellín",
+    "lat": 6.2088,
+    "lon": -75.5675,
+    "token": "eaaab4493f4d51acb896e20387c1e96b"
+  },
+  {
+    "id": "cali-granada",
+    "nombre": "Casa Granada",
+    "ciudad": "Cali",
+    "lat": 3.4572,
+    "lon": -76.535,
+    "token": "3a6059c86e5c122abafb5e19678d6b54"
+  },
+  {
+    "id": "bucaramanga-cabecera",
+    "nombre": "Casa Cabecera",
+    "ciudad": "Bucaramanga",
+    "lat": 7.1193,
+    "lon": -73.1227,
+    "token": "655d52d59c7580cf7ce6ef939e1b8c9f"
+  },
+  {
+    "id": "barranquilla-norte",
+    "nombre": "Casa Norte",
+    "ciudad": "Barranquilla",
+    "lat": 10.9878,
+    "lon": -74.7889,
+    "token": "9e1822f72c8679a4443b24e18c77a1a6"
+  }
+]
