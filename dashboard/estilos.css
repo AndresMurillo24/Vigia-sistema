@@ -84,6 +84,22 @@ tbody tr { cursor: pointer; } tbody tr:hover, tbody tr.sel { background: var(--t
 .registro li span:last-child { font-family: var(--mono); color: var(--tenue); white-space: nowrap; }
 .registro .vacio { color: var(--tenue); justify-content: flex-start; }
 
+.sesion { display: flex; align-items: center; gap: 12px; }
+.quien { display: grid; text-align: right; line-height: 1.2; }
+.quien small { font: 600 11px var(--mono); color: var(--tenue); text-transform: uppercase; letter-spacing: .06em; }
+.salir { font: 600 13px var(--sans); color: var(--tinta); background: transparent; border: 1px solid var(--linea); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.salir:hover { border-color: var(--coral); color: var(--coral); }
+
+.pagina-login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+main.login { grid-template-columns: 1fr; margin: 0; max-width: none; width: min(380px, 100%); background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 20px; padding: 28px; box-shadow: var(--sombra); display: grid; gap: 6px; }
+.login h1 { font-size: 22px; }
+.login .nota { color: var(--tenue); margin-bottom: 14px; }
+.login form { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: stretch; }
+.login input { font: inherit; color: var(--tinta); background: var(--fondo); border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
+.login input:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px var(--teal-suave); }
+.login .error { color: var(--coral); min-height: 1.3em; font-size: 13px; }
+.login .boton { width: 100%; padding: 12px; background: var(--teal); }
+
 :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 
 @media (max-width: 900px) {
@@ -91,5 +107,6 @@ tbody tr { cursor: pointer; } tbody tr:hover, tbody tr.sel { background: var(--t
   .mapa { grid-row: auto; }
   .kpis { grid-template-columns: repeat(2, 1fr); }
   form { grid-template-columns: 1fr; }
-  .barra { padding: 12px; } h1 { font-size: 17px; }
+  .barra { padding: 12px; flex-wrap: wrap; } h1 { font-size: 17px; }
+  .quien { display: none; }
 }

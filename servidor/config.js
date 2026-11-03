@@ -13,6 +13,12 @@ module.exports = {
   RADIO_KM: 300, // distancia máxima entre los dispositivos que confirman
   DURACION_ALERTA_MS: 20_000, // tiempo que un dispositivo permanece en estado de alerta
 
+  // Acceso al panel
+  DURACION_SESION_MS: 8 * 60 * 60 * 1000, // una jornada de trabajo
+  INTENTOS_MAXIMOS: 5, // intentos fallidos de inicio de sesión antes de bloquear
+  BLOQUEO_MS: 15 * 60 * 1000,
+  COOKIE_SEGURA: process.env.COOKIE_SEGURA === 'true', // activar cuando el sitio use HTTPS
+
   // Permite que el panel ordene sismos simulados. Debe desactivarse en producción.
   MODO_SIMULACION: process.env.MODO_SIMULACION !== 'false',
 };

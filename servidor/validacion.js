@@ -44,4 +44,13 @@ function validarSimulacion(b) {
   return ok({ lat, lon, magnitud });
 }
 
-module.exports = { validarMensajeDispositivo, validarSimulacion, LIMITE_G };
+/** Valida el formulario de inicio de sesión. */
+function validarLogin(b) {
+  if (!b || typeof b !== 'object') return fallo('Cuerpo inválido');
+  const { usuario, clave } = b;
+  if (typeof usuario !== 'string' || !/^[a-z0-9._-]{3,40}$/i.test(usuario)) return fallo('Usuario o contraseña incorrectos');
+  if (typeof clave !== 'string' || clave.length < 1 || clave.length > 200) return fallo('Usuario o contraseña incorrectos');
+  return ok({ usuario: usuario.toLowerCase(), clave });
+}
+
+module.exports = { validarMensajeDispositivo, validarSimulacion, validarLogin, LIMITE_G };

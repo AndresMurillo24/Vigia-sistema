@@ -7,6 +7,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const { Detector } = require('./detector');
 const { validarMensajeDispositivo, validarSimulacion } = require('./validacion');
 const { verificarToken } = require('./seguridad');
+const { crearAutenticacion } = require('./auth');
 
 const INTERVALO_PANEL_MS = 200; // cada cuánto se envían las lecturas agrupadas al panel
 const TIEMPO_AUTENTICACION_MS = 5000;
@@ -16,6 +17,8 @@ const TIEMPO_AUTENTICACION_MS = 5000;
  * (/ws/dispositivo para los dispositivos y /ws/panel para el dashboard).
  */
 function crearServidor({ db, config, log = console.log }) {
+  const auth = crearAutenticacion({ db, config, log });
+
   /* ---------- estado en memoria de cada dispositivo ---------- */
   const estado = new Map();
   for (const d of db.listarDispositivos()) {
@@ -58,10 +61,27 @@ function crearServidor({ db, config, log = console.log }) {
     next();
   });
   app.use(express.json({ limit: '10kb' }));
+  // Las peticiones que modifican algo deben ser JSON: un formulario de otro sitio no puede enviarlas.
+  app.use('/api', (req, res, next) => {
+    if (req.method === 'POST' && !req.is('application/json')) return res.status(415).json({ error: 'Se esperaba JSON' });
+    next();
+  });
   app.use(express.static(path.join(__dirname, '..', 'dashboard')));
   app.use('/vendor/chart.js', express.static(path.join(__dirname, '..', 'node_modules', 'chart.js', 'dist')));
 
-  app.get('/api/estado', (req, res) => {
+  /* sesión */
+  app.post('/api/login', auth.login);
+  app.post('/api/logout', (req, res) => {
+    const u = auth.logout(req, res);
+    if (u) for (const ws of wssPanel.clients) if (ws.tokenHash === u.tokenHash) ws.close(4401, 'Sesión cerrada');
+  });
+  app.get('/api/sesion', auth.requerir(), (req, res) => {
+    const { usuario, nombre, rol } = req.usuario;
+    res.json({ usuario: { usuario, nombre, rol } });
+  });
+
+  /* datos (requieren sesión) */
+  app.get('/api/estado', auth.requerir(), (req, res) => {
     res.json({
       dispositivos: [...estado.values()].map(resumen),
       eventos: db.ultimosEventos(20),
@@ -70,13 +90,14 @@ function crearServidor({ db, config, log = console.log }) {
     });
   });
 
-  app.post('/api/simulacion', (req, res) => {
+  // Solo un administrador puede ordenar una simulación.
+  app.post('/api/simulacion', auth.requerir('admin'), (req, res) => {
     if (!config.MODO_SIMULACION) return res.status(403).json({ error: 'El modo simulación está desactivado' });
     const v = validarSimulacion(req.body);
     if (!v.ok) return res.status(400).json({ error: v.error });
     const orden = { tipo: 'simular_sismo', ...v.datos, inicio: Date.now() };
     const enviados = difundir(wssDispositivos, orden);
-    log(`[SIMULACIÓN] Sismo M${v.datos.magnitud} en (${v.datos.lat}, ${v.datos.lon}) enviado a ${enviados} dispositivos`);
+    log(`[SIMULACIÓN] ${req.usuario.usuario} envió un sismo M${v.datos.magnitud} en (${v.datos.lat}, ${v.datos.lon}) a ${enviados} dispositivos`);
     res.status(202).json({ enviados });
   });
 
@@ -95,7 +116,16 @@ function crearServidor({ db, config, log = console.log }) {
     const { pathname } = new URL(req.url, 'http://localhost');
     const destino = pathname === '/ws/dispositivo' ? wssDispositivos : pathname === '/ws/panel' ? wssPanel : null;
     if (!destino) return socket.destroy();
-    destino.handleUpgrade(req, socket, head, (ws) => destino.emit('connection', ws, req));
+    // El panel solo recibe datos en vivo si quien lo abre tiene una sesión válida.
+    const usuario = destino === wssPanel ? auth.usuarioDeRequest(req) : null;
+    if (destino === wssPanel && !usuario) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+      return socket.destroy();
+    }
+    destino.handleUpgrade(req, socket, head, (ws) => {
+      if (usuario) ws.tokenHash = usuario.tokenHash;
+      destino.emit('connection', ws, req);
+    });
   });
 
   wssDispositivos.on('connection', (ws) => {
@@ -171,8 +201,11 @@ function crearServidor({ db, config, log = console.log }) {
     difundir(wssPanel, { tipo: 'lecturas', t: Date.now(), datos });
   }, INTERVALO_PANEL_MS);
 
+  const limpieza = setInterval(() => db.borrarSesionesVencidas(Date.now()), 60_000);
+
   function cerrar() {
     clearInterval(temporizador);
+    clearInterval(limpieza);
     for (const ws of [...wssDispositivos.clients, ...wssPanel.clients]) ws.terminate();
     return new Promise((resolver) => server.close(resolver));
   }

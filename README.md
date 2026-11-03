@@ -54,7 +54,8 @@ npm install
 npm start
 ```
 
-Abre **http://localhost:3000** en el navegador. Verás los 12 dispositivos en línea. En la tarjeta *Simular un sismo* elige un epicentro y una magnitud y pulsa el botón: en la terminal y en el panel se ve todo el proceso.
+La primera vez, la terminal muestra la contraseña del usuario **admin** (se genera al azar). Guárdala.
+Abre **http://localhost:3000**, inicia sesión y verás los 12 dispositivos en línea. En la tarjeta *Simular un sismo* elige un epicentro y una magnitud y pulsa el botón: en la terminal y en el panel se ve todo el proceso.
 
 | Comando | Para qué |
 |---|---|
@@ -62,8 +63,20 @@ Abre **http://localhost:3000** en el navegador. Verás los 12 dispositivos en l�
 | `npm run servidor` | Solo la plataforma central. |
 | `npm run simulador` | Solo los dispositivos (en otra terminal, con el servidor ya corriendo). |
 | `npm test` | Ejecuta las pruebas automáticas. |
+| `npm run usuario -- <usuario> <admin\|operador> "<Nombre>"` | Crea un usuario del panel o cambia su contraseña. |
 
 Para usar otro puerto: `PUERTO=4000 npm start` (en PowerShell: `$env:PUERTO=4000; npm start`).
+Para fijar la contraseña inicial del admin en vez de generarla: `ADMIN_CLAVE=tu-clave npm start` (solo aplica cuando la base de datos está vacía).
+
+## Usuarios del panel
+
+| Rol | Puede |
+|---|---|
+| `admin` | Ver el panel y simular sismos. |
+| `operador` | Ver el panel en vivo, sin poder simular. |
+
+Ejemplo para crear un operador: `npm run usuario -- daniel operador "Daniel Márquez"` (pide la contraseña).
+Si olvidas la del admin: `npm run usuario -- admin admin "Administrador"`.
 
 ## Cómo funciona la detección
 
@@ -75,12 +88,14 @@ Los valores se cambian en `servidor/config.js`. El modelo de propagación de `si
 
 ## Seguridad implementada
 
+- **Inicio de sesión del panel**: contraseñas con **scrypt** y sal aleatoria; sesiones guardadas en el servidor con cookie `HttpOnly` y `SameSite=Strict`; bloqueo de 15 minutos tras 5 intentos fallidos; el mismo mensaje de error para usuario inexistente y contraseña incorrecta; roles `admin` y `operador`.
+- El canal en vivo del panel (`/ws/panel`) y la API exigen sesión; simular sismos exige rol `admin`.
 - Cada dispositivo se autentica con un **token**; la base de datos solo guarda su **hash SHA-256** y la comparación es en tiempo constante.
 - **Validación con lista blanca** de todos los mensajes: tipos permitidos, números finitos y rangos físicos posibles (±16 g). Mensajes de máximo 1 KB.
 - **Consultas SQL con parámetros** (sin concatenar texto) para evitar inyección SQL.
 - El panel inserta datos con `textContent`, nunca con `innerHTML`, para evitar XSS.
 - Cabeceras HTTP de seguridad y la opción `MODO_SIMULACION=false` para desactivar la simulación en producción.
-- Pendiente para el despliegue: HTTPS/WSS, autenticación de usuarios en el panel y tokens fuera del repositorio.
+- Pendiente para el despliegue: HTTPS/WSS (con `COOKIE_SEGURA=true`) y tokens de dispositivos fuera del repositorio.
 
 > Los tokens de `simulador/dispositivos.json` son solo para la simulación. En un sistema real nunca se guardan en el repositorio.
 
@@ -94,14 +109,16 @@ Los valores se cambian en `servidor/config.js`. El modelo de propagación de `si
 │   ├── detector.js        # confirma sismos con varios dispositivos
 │   ├── db.js              # base de datos SQLite
 │   ├── validacion.js      # validación de mensajes
-│   ├── seguridad.js       # tokens
+│   ├── auth.js            # inicio de sesión, sesiones y roles
+│   ├── seguridad.js       # tokens y contraseñas
 │   ├── semilla.js         # registra los dispositivos simulados
 │   └── config.js          # umbrales y parámetros
 ├── simulador/
 │   ├── dispositivo.js     # firmware simulado del ESP32
 │   ├── modelo.js          # propagación simplificada de las ondas
 │   └── dispositivos.json  # las 12 casas simuladas
-├── dashboard/             # panel web
+├── scripts/usuario.js     # crear usuarios del panel
+├── dashboard/             # panel web (login.html + index.html)
 └── tests/                 # pruebas con node:test
 ```
 

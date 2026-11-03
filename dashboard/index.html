@@ -7,13 +7,17 @@
   <link rel="icon" href="logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="estilos.css">
 </head>
-<body>
+<body hidden>
   <header class="barra">
     <div class="marca">
       <img src="logo.svg" alt="" width="40" height="40">
       <div><p class="sobre">Plataforma central</p><h1>Vigía · Panel de monitoreo</h1></div>
     </div>
-    <span class="chip" id="conexion">Conectando…</span>
+    <div class="sesion">
+      <span class="chip" id="conexion">Conectando…</span>
+      <span class="quien"><strong id="nombreUsuario"></strong><small id="rolUsuario"></small></span>
+      <button type="button" class="salir" id="salir">Cerrar sesión</button>
+    </div>
   </header>
 
   <div class="aviso" id="aviso" role="alert" hidden>
@@ -41,7 +45,7 @@
       <dl class="ejes"><div><dt>X</dt><dd id="vx">–</dd></div><div><dt>Y</dt><dd id="vy">–</dd></div><div><dt>Z</dt><dd id="vz">–</dd></div><div><dt>|a|</dt><dd id="vm">–</dd></div></dl>
     </section>
 
-    <section class="tarjeta simulacion" id="cajaSimulacion">
+    <section class="tarjeta simulacion" id="cajaSimulacion" hidden>
       <header><h2>Simular un sismo</h2><p>Solo para pruebas: los dispositivos simulados sentirán la sacudida según su distancia</p></header>
       <form id="formSimulacion">
         <label>Epicentro

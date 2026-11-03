@@ -11,7 +11,8 @@
     "start": "node --disable-warning=ExperimentalWarning inicio.js",
     "servidor": "node --disable-warning=ExperimentalWarning servidor/index.js",
     "simulador": "node simulador/index.js",
-    "test": "node --disable-warning=ExperimentalWarning --test"
+    "test": "node --disable-warning=ExperimentalWarning --test",
+    "usuario": "node --disable-warning=ExperimentalWarning scripts/usuario.js"
   },
   "dependencies": {
     "chart.js": "^4.6.1",

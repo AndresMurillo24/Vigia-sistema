@@ -28,6 +28,19 @@ const ESQUEMA = `
     dispositivos INTEGER NOT NULL,
     pga_max      REAL NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario    TEXT NOT NULL UNIQUE,
+    nombre     TEXT NOT NULL,
+    rol        TEXT NOT NULL CHECK (rol IN ('admin', 'operador')),
+    clave_hash TEXT NOT NULL,
+    creado     TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS sesiones (
+    token_hash TEXT PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    expira     INTEGER NOT NULL
+  );
 `;
 
 /** Abre (o crea) la base de datos. Usa ':memory:' en las pruebas. */
@@ -54,6 +67,18 @@ function abrirBaseDatos(ruta) {
     guardarAlerta: db.prepare('INSERT INTO alertas (fecha, lat, lon, dispositivos, pga_max) VALUES (?, ?, ?, ?, ?)'),
     actualizarAlerta: db.prepare('UPDATE alertas SET dispositivos = ?, pga_max = ? WHERE id = ?'),
     ultimasAlertas: db.prepare('SELECT * FROM alertas ORDER BY id DESC LIMIT ?'),
+    guardarUsuario: db.prepare(`
+      INSERT INTO usuarios (usuario, nombre, rol, clave_hash, creado) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(usuario) DO UPDATE SET nombre = excluded.nombre, rol = excluded.rol, clave_hash = excluded.clave_hash`),
+    buscarUsuario: db.prepare('SELECT * FROM usuarios WHERE usuario = ?'),
+    contarUsuarios: db.prepare('SELECT COUNT(*) AS n FROM usuarios'),
+    crearSesion: db.prepare('INSERT INTO sesiones (token_hash, usuario_id, expira) VALUES (?, ?, ?)'),
+    buscarSesion: db.prepare(`
+      SELECT u.id, u.usuario, u.nombre, u.rol FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
+      WHERE s.token_hash = ? AND s.expira > ?`),
+    borrarSesion: db.prepare('DELETE FROM sesiones WHERE token_hash = ?'),
+    borrarSesionesUsuario: db.prepare('DELETE FROM sesiones WHERE usuario_id = ?'),
+    borrarSesionesVencidas: db.prepare('DELETE FROM sesiones WHERE expira <= ?'),
   };
 
   return {
@@ -65,6 +90,14 @@ function abrirBaseDatos(ruta) {
     guardarAlerta: (a) => Number(q.guardarAlerta.run(a.fecha, a.lat, a.lon, a.dispositivos, a.pga_max).lastInsertRowid),
     actualizarAlerta: (id, dispositivos, pgaMax) => q.actualizarAlerta.run(dispositivos, pgaMax, id),
     ultimasAlertas: (n = 10) => q.ultimasAlertas.all(n),
+    guardarUsuario: (u) => q.guardarUsuario.run(u.usuario, u.nombre, u.rol, u.clave_hash, new Date().toISOString()),
+    buscarUsuario: (usuario) => q.buscarUsuario.get(usuario),
+    contarUsuarios: () => q.contarUsuarios.get().n,
+    crearSesion: (tokenHash, usuarioId, expira) => q.crearSesion.run(tokenHash, usuarioId, expira),
+    buscarSesion: (tokenHash, ahora) => q.buscarSesion.get(tokenHash, ahora),
+    borrarSesion: (tokenHash) => q.borrarSesion.run(tokenHash),
+    borrarSesionesUsuario: (usuarioId) => q.borrarSesionesUsuario.run(usuarioId),
+    borrarSesionesVencidas: (ahora) => q.borrarSesionesVencidas.run(ahora),
     cerrar: () => db.close(),
   };
 }

@@ -152,14 +152,35 @@ function mostrarAviso(a) {
   ocultarAviso = setTimeout(() => { $('aviso').hidden = true; }, 30_000);
 }
 
+/* ---------- sesión ---------- */
+const irAlLogin = () => location.replace('/login.html');
+let usuarioActual = null;
+
+async function verificarSesion() {
+  const r = await fetch('/api/sesion');
+  if (!r.ok) { irAlLogin(); return null; }
+  usuarioActual = (await r.json()).usuario;
+  $('nombreUsuario').textContent = usuarioActual.nombre;
+  $('rolUsuario').textContent = usuarioActual.rol === 'admin' ? 'Administrador' : 'Operador';
+  document.body.hidden = false;
+  return usuarioActual;
+}
+
+$('salir').addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+  irAlLogin();
+});
+
 /* ---------- datos iniciales ---------- */
 async function cargar() {
   const r = await fetch('/api/estado');
+  if (r.status === 401) return irAlLogin();
   const datos = await r.json();
   estado.umbral = datos.config.umbral;
   estado.eventos = datos.eventos;
   estado.alertas = datos.alertas;
-  $('cajaSimulacion').hidden = !datos.config.modoSimulacion;
+  // La simulación solo la ve un administrador y solo si el modo simulación está activo.
+  $('cajaSimulacion').hidden = !(datos.config.modoSimulacion && usuarioActual?.rol === 'admin');
   for (const d of datos.dispositivos) {
     if (!estado.dispositivos.has(d.id)) {
       estado.dispositivos.set(d.id, { datos: d, m: null, punto: dibujarDispositivo(d), ...crearFila(d) });
@@ -175,7 +196,13 @@ async function cargar() {
 function conectar() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/panel`);
   ws.onopen = () => { $('conexion').textContent = 'En vivo'; $('conexion').classList.remove('caido'); cargar(); };
-  ws.onclose = () => { $('conexion').textContent = 'Sin conexión · reintentando'; $('conexion').classList.add('caido'); setTimeout(conectar, 2000); };
+  ws.onclose = async (e) => {
+    $('conexion').textContent = 'Sin conexión · reintentando';
+    $('conexion').classList.add('caido');
+    // Si la sesión venció o se cerró, volver al inicio de sesión en lugar de reintentar.
+    const sigue = e.code !== 4401 && (await fetch('/api/sesion').then((r) => r.ok).catch(() => true));
+    if (sigue) setTimeout(conectar, 2000); else irAlLogin();
+  };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     switch (msg.tipo) {
@@ -233,6 +260,7 @@ $('formSimulacion').addEventListener('submit', async (e) => {
   try {
     const r = await fetch('/api/simulacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, magnitud: Number($('magnitud').value) }) });
     const datos = await r.json();
+    if (r.status === 401) return irAlLogin();
     $('simEstado').textContent = r.ok ? `Sismo enviado a ${datos.enviados} dispositivos. Observa el mapa y la gráfica.` : `Error: ${datos.error}`;
   } catch {
     $('simEstado').textContent = 'No se pudo contactar al servidor.';
@@ -241,4 +269,4 @@ $('formSimulacion').addEventListener('submit', async (e) => {
   }
 });
 
-conectar();
+verificarSesion().then((u) => { if (u) conectar(); });

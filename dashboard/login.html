@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigía · Iniciar sesión</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body class="pagina-login">
+  <main class="login">
+    <img src="logo.svg" alt="" width="64" height="64">
+    <p class="sobre">Plataforma central</p>
+    <h1>Panel de monitoreo Vigía</h1>
+    <p class="nota">Ingresa con tu usuario de operador o administrador.</p>
+    <form id="formLogin" novalidate>
+      <label>Usuario
+        <input id="usuario" name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <label>Contraseña
+        <input id="clave" name="clave" type="password" autocomplete="current-password" required>
+      </label>
+      <p class="error" id="error" role="alert"></p>
+      <button type="submit" class="boton">Ingresar</button>
+    </form>
+  </main>
+  <script src="login.js"></script>
+</body>
+</html>
