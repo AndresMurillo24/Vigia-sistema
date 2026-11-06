@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/db.js
+ * Tipo:     JavaScript (Node.js · SQLite)
+ * Capa:     Capa de datos
+ * Qué hace: Base de datos SQLite: tablas, migración automática y todas las consultas con
+ *           parámetros.
+ */
 'use strict';
 
 const fs = require('node:fs');

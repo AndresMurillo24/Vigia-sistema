@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/validacion.test.js
+ * Tipo:     JavaScript (pruebas · node:test)
+ * Capa:     Pruebas
+ * Qué hace: Pruebas de la validación de mensajes y de la simulación.
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

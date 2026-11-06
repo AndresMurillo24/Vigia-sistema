@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  scripts/usuario.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Herramientas
+ * Qué hace: Herramienta de consola para crear usuarios del panel o cambiar su contraseña.
+ */
 'use strict';
 
 /*

@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/index.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend
+ * Qué hace: Arranca la plataforma central: abre la base de datos, registra los dispositivos y crea
+ *           el administrador.
+ */
 'use strict';
 
 const config = require('./config');

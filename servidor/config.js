@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/config.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend
+ * Qué hace: Parámetros del sistema: puerto, umbral de detección, ventana de confirmación y
+ *           duración de sesiones.
+ */
 'use strict';
 
 const path = require('node:path');

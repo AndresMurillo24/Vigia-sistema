@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  simulador/dispositivo.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de dispositivo
+ * Qué hace: Firmware simulado del ESP32: lee el acelerómetro 10 veces por segundo, detecta
+ *           vibraciones, hace sonar la alarma y reporta batería y WiFi.
+ */
 'use strict';
 
 const WebSocket = require('ws');

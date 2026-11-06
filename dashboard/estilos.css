@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/estilos.css
+ * Tipo:     CSS
+ * Capa:     Capa de presentación · panel de la empresa
+ * Qué hace: Estilos del panel y de su inicio de sesión, con modo claro y oscuro.
+ */
 :root {
   --fondo: #eef2f0; --tarjeta: #ffffff; --tinta: #11231f; --tenue: #56686a; --linea: rgba(17, 35, 31, .12);
   --teal: #1b7867; --teal-suave: rgba(27, 120, 103, .12); --coral: #cf4d27; --coral-suave: rgba(207, 77, 39, .12);

@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/cliente/cliente.js
+ * Tipo:     JavaScript (navegador)
+ * Capa:     Capa de presentación · app del cliente
+ * Qué hace: Lógica de la app: cuenta, vinculación, estado en vivo, alerta con «Estoy bien»,
+ *           historial, sensibilidad y contactos.
+ */
 'use strict';
 
 /* ============================ utilidades ============================ */

@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/app.js
+ * Tipo:     JavaScript (navegador)
+ * Capa:     Capa de presentación · panel de la empresa
+ * Qué hace: Lógica del panel: recibe datos en vivo por WebSocket y dibuja mapa, gráfica
+ *           (Chart.js), tabla, alertas y simulación.
+ */
 'use strict';
 
 /* Estado del panel */

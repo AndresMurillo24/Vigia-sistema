@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/validacion.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend · seguridad
+ * Qué hace: Valida todo lo que entra al sistema con lista blanca y rangos permitidos.
+ */
 'use strict';
 
 // Ningún acelerómetro doméstico mide más de ±16 g: cualquier valor mayor es un error o un ataque.

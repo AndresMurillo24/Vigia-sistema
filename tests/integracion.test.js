@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/integracion.test.js
+ * Tipo:     JavaScript (pruebas · node:test)
+ * Capa:     Pruebas
+ * Qué hace: Prueba del flujo completo: dispositivos, plataforma, panel y alerta a la red.
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

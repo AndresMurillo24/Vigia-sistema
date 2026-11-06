@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  simulador/modelo.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de dispositivo
+ * Qué hace: Modelo simplificado de cómo viajan las ondas P y S y de cuánto sacuden según la
+ *           distancia al epicentro.
+ */
 'use strict';
 
 /*

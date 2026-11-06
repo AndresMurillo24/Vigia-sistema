@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/detector.test.js
+ * Tipo:     JavaScript (pruebas · node:test)
+ * Capa:     Pruebas
+ * Qué hace: Pruebas del detector de sismos: un solo dispositivo no alerta, dos cercanos sí.
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

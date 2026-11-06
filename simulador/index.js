@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  simulador/index.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de dispositivo
+ * Qué hace: Crea los 12 dispositivos simulados y los conecta a la plataforma.
+ */
 'use strict';
 
 const { DispositivoSimulado } = require('./dispositivo');

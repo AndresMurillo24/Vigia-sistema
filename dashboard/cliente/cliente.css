@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/cliente/cliente.css
+ * Tipo:     CSS
+ * Capa:     Capa de presentación · app del cliente
+ * Qué hace: Estilos de la app del cliente: diseño para celular, letra grande y alto contraste para
+ *           adultos mayores.
+ */
 /* Mi Vigía · app del cliente. Pensada para celular, con letra grande y alto contraste
    (requerimiento de usabilidad para adultos mayores). */
 :root {

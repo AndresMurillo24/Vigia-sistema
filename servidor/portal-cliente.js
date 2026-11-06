@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/portal-cliente.js
+ * Tipo:     JavaScript (Node.js · Express + WebSocket)
+ * Capa:     Capa de backend y comunicación
+ * Qué hace: API y canal en vivo de la app del cliente; cada hogar solo accede a sus propios
+ *           dispositivos.
+ */
 'use strict';
 
 const { WebSocketServer, WebSocket } = require('ws');

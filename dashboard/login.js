@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/login.js
+ * Tipo:     JavaScript (navegador)
+ * Capa:     Capa de presentación · panel de la empresa
+ * Qué hace: Envía usuario y contraseña al servidor y muestra los errores.
+ */
 'use strict';
 
 const $ = (id) => document.getElementById(id);

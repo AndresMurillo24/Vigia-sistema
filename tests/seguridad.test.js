@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/seguridad.test.js
+ * Tipo:     JavaScript (pruebas · node:test)
+ * Capa:     Pruebas
+ * Qué hace: Pruebas del hash y la verificación de tokens.
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
