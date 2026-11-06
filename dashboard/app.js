@@ -131,7 +131,8 @@ function renderRegistro(lista, elemento, texto, vacio) {
   }
 }
 const renderEventos = () => renderRegistro(estado.eventos, $('listaEventos'), (e) => `${e.nombre} (${e.ciudad}) · ${fmt(e.pga, 2)} g`, 'Sin eventos todavía');
-const renderAlertas = () => renderRegistro(estado.alertas, $('listaAlertas'), (a) => `Sismo confirmado por ${a.dispositivos} dispositivos · PGA máx ${fmt(a.pga_max, 2)} g`, 'Sin alertas todavía');
+const respuestas = (a) => (a.bien || a.ayuda ? ` · hogares: ${a.bien || 0} bien, ${a.ayuda || 0} piden ayuda` : '');
+const renderAlertas = () => renderRegistro(estado.alertas, $('listaAlertas'), (a) => `Sismo confirmado por ${a.dispositivos} dispositivos · PGA máx ${fmt(a.pga_max, 2)} g${respuestas(a)}`, 'Sin alertas todavía');
 
 function seleccionar(id) {
   const anterior = estado.seleccionado;
@@ -242,6 +243,11 @@ function conectar() {
         mostrarEpicentro(msg.alerta.lat, msg.alerta.lon);
         renderAlertas();
         break;
+      case 'respuesta': { // un hogar respondió «Estoy bien» o «Necesito ayuda» desde Mi Vigía
+        const a = estado.alertas.find((x) => x.id === msg.alertaId);
+        if (a) { a.bien = msg.bien; a.ayuda = msg.ayuda; renderAlertas(); }
+        break;
+      }
       case 'alerta_actualizada': {
         const a = estado.alertas.find((x) => x.id === msg.alerta.id);
         if (a) { Object.assign(a, msg.alerta); renderAlertas(); if (!$('aviso').hidden) mostrarAviso(a); }

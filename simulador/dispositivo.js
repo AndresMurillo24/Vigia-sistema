@@ -7,6 +7,7 @@ const { pgaEstimada, tiemposDeLlegada, amplitud } = require('./modelo');
 const RUIDO_G = 0.004; // vibración de fondo normal de una casa
 const DURACION_ALARMA_MS = 15_000;
 const REINTENTO_MS = 3000;
+const INTERVALO_ESTADO_MS = 15_000; // cada cuánto se reporta batería y WiFi
 
 /**
  * Simula el firmware del ESP32: lee el acelerómetro 10 veces por segundo, envía las lecturas
@@ -23,6 +24,10 @@ class DispositivoSimulado {
     this.alarmaHasta = 0;
     this.reporteHasta = 0;
     this.detenido = false;
+    // Batería y señal de cada casa (fijas por dispositivo, con pequeñas variaciones).
+    const semilla = [...datos.id].reduce((a, c) => a + c.charCodeAt(0), 0);
+    this.bateria = 62 + (semilla * 7) % 38;
+    this.wifi = -42 - (semilla * 13) % 40;
   }
 
   conectar() {
@@ -31,6 +36,7 @@ class DispositivoSimulado {
     this.ws.on('message', (raw) => this.#recibir(JSON.parse(raw)));
     this.ws.on('close', () => {
       clearInterval(this.bucle);
+      clearInterval(this.reporte);
       if (!this.detenido) setTimeout(() => this.conectar(), REINTENTO_MS);
     });
     this.ws.on('error', () => {}); // el evento 'close' se encarga de reintentar
@@ -39,6 +45,7 @@ class DispositivoSimulado {
   detener() {
     this.detenido = true;
     clearInterval(this.bucle);
+    clearInterval(this.reporte);
     this.ws?.close();
   }
 
@@ -47,7 +54,19 @@ class DispositivoSimulado {
       case 'bienvenida':
         this.umbral = msg.umbral;
         clearInterval(this.bucle);
+        clearInterval(this.reporte);
         this.bucle = setInterval(() => this.#leerSensor(), this.periodo);
+        this.#reportarEstado();
+        this.reporte = setInterval(() => this.#reportarEstado(), INTERVALO_ESTADO_MS);
+        break;
+      case 'config': // el dueño cambió la sensibilidad desde la app
+        this.umbral = msg.umbral;
+        this.log(`  [CONFIG] ${this.datos.nombre}: nuevo umbral ${msg.umbral} g`);
+        break;
+      case 'prueba': // el dueño pidió probar la alarma desde la app
+        this.alarmaHasta = Date.now() + 4000;
+        this.log(`  [PRUEBA] ${this.datos.nombre} (${this.datos.ciudad}): LED rojo y sirena por 4 s`);
+        this.#enviar({ tipo: 'prueba_ok' });
         break;
       case 'simular_sismo': {
         const d = distanciaKm(this.datos, msg);
@@ -91,6 +110,12 @@ class DispositivoSimulado {
   #activarAlarma(motivo) {
     this.alarmaHasta = Date.now() + DURACION_ALARMA_MS;
     this.log(`  [ALARMA] ${this.datos.nombre} (${this.datos.ciudad}): LED rojo y sirena · ${motivo}`);
+  }
+
+  #reportarEstado() {
+    this.bateria = Math.max(5, Math.min(100, this.bateria + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.3 ? 1 : 0)));
+    const wifi = Math.round(this.wifi + (Math.random() - 0.5) * 4);
+    this.#enviar({ tipo: 'estado', bateria: this.bateria, wifi });
   }
 
   #ruido() {
