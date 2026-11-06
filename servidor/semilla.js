@@ -10,7 +10,8 @@ const dispositivos = require('../simulador/dispositivos.json');
  */
 function sembrarDispositivos(db) {
   for (const d of dispositivos) {
-    db.guardarDispositivo({ id: d.id, nombre: d.nombre, ciudad: d.ciudad, lat: d.lat, lon: d.lon, token_hash: hashToken(d.token) });
+    // El código de vinculación (impreso en la caja) también se guarda solo como hash.
+    db.guardarDispositivo({ id: d.id, nombre: d.nombre, ciudad: d.ciudad, lat: d.lat, lon: d.lon, token_hash: hashToken(d.token), codigo_hash: hashToken(d.codigo) });
   }
   return dispositivos.length;
 }

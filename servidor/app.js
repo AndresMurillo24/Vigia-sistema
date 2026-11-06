@@ -7,26 +7,58 @@ const { WebSocketServer, WebSocket } = require('ws');
 const { Detector } = require('./detector');
 const { validarMensajeDispositivo, validarSimulacion } = require('./validacion');
 const { verificarToken } = require('./seguridad');
-const { crearAutenticacion } = require('./auth');
+const { autenticacionPanel } = require('./auth');
+const { crearPortalCliente } = require('./portal-cliente');
 
-const INTERVALO_PANEL_MS = 200; // cada cuánto se envían las lecturas agrupadas al panel
+const INTERVALO_LECTURAS_MS = 200; // cada cuánto se envían las lecturas agrupadas a las pantallas
 const TIEMPO_AUTENTICACION_MS = 5000;
 
 /**
- * Crea la plataforma central: API REST, panel web y los dos canales WebSocket
- * (/ws/dispositivo para los dispositivos y /ws/panel para el dashboard).
+ * Crea la plataforma central: API REST, panel de la empresa, portal de los clientes y los
+ * canales WebSocket (/ws/dispositivo, /ws/panel y /ws/cliente).
  */
 function crearServidor({ db, config, log = console.log }) {
-  const auth = crearAutenticacion({ db, config, log });
+  const auth = autenticacionPanel({ db, config, log });
 
   /* ---------- estado en memoria de cada dispositivo ---------- */
   const estado = new Map();
   for (const d of db.listarDispositivos()) {
-    estado.set(d.id, { d, socket: null, enLinea: false, alertaHasta: 0, ultima: null, pico: 0 });
+    estado.set(d.id, { d, socket: null, enLinea: false, alertaHasta: 0, ultima: null, pico: 0, bateria: null, wifi: null });
   }
   const resumen = (e) => ({
     id: e.d.id, nombre: e.d.nombre, ciudad: e.d.ciudad, lat: e.d.lat, lon: e.d.lon,
-    enLinea: e.enLinea, enAlerta: Date.now() < e.alertaHasta,
+    enLinea: e.enLinea, enAlerta: Date.now() < e.alertaHasta, cliente: !!e.d.cliente_id,
+  });
+
+  /* ---------- HTTP ---------- */
+  const app = express();
+  app.disable('x-powered-by');
+  app.use((req, res, next) => {
+    res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' });
+    next();
+  });
+  app.use(express.json({ limit: '10kb' }));
+  // Las peticiones que modifican algo deben ser JSON: un formulario de otro sitio no puede enviarlas.
+  app.use('/api', (req, res, next) => {
+    if (['POST', 'PUT', 'PATCH'].includes(req.method) && !req.is('application/json')) return res.status(415).json({ error: 'Se esperaba JSON' });
+    next();
+  });
+  app.use(express.static(path.join(__dirname, '..', 'dashboard')));
+  app.use('/vendor/chart.js', express.static(path.join(__dirname, '..', 'node_modules', 'chart.js', 'dist')));
+
+  const server = http.createServer(app);
+  const wssDispositivos = new WebSocketServer({ noServer: true, maxPayload: 1024 });
+  const wssPanel = new WebSocketServer({ noServer: true, maxPayload: 1024 });
+
+  function enviarADispositivo(id, mensaje) {
+    const e = estado.get(id);
+    if (e?.socket) enviar(e.socket, mensaje);
+  }
+
+  /* ---------- portal de los clientes ---------- */
+  const portal = crearPortalCliente({
+    app, db, config, log, estado, enviarADispositivo,
+    avisarPanel: (m) => difundir(wssPanel, m),
   });
 
   /* ---------- detector de sismos ---------- */
@@ -41,11 +73,12 @@ function crearServidor({ db, config, log = console.log }) {
     const fecha = new Date(a.t).toISOString();
     const id = db.guardarAlerta({ fecha, lat: a.lat, lon: a.lon, dispositivos: a.dispositivos.length, pga_max: a.pgaMax });
     idsAlerta.set(a.id, id);
-    const alerta = { id, fecha, lat: a.lat, lon: a.lon, dispositivos: a.dispositivos.length, pga_max: a.pgaMax };
+    const alerta = { id, fecha, lat: a.lat, lon: a.lon, dispositivos: a.dispositivos.length, pga_max: a.pgaMax, bien: 0, ayuda: 0 };
     log(`[ALERTA] Sismo confirmado por ${a.dispositivos.length} dispositivos · PGA máx ${a.pgaMax.toFixed(2)} g`);
     difundir(wssPanel, { tipo: 'alerta', alerta });
-    // Aviso temprano: todos los dispositivos de la red reciben la alerta, aunque no hayan sentido nada aún.
+    // Aviso temprano: todos los dispositivos de la red y las apps de los clientes reciben la alerta.
     difundir(wssDispositivos, { tipo: 'alerta', alerta: { lat: a.lat, lon: a.lon, t: a.t } });
+    portal.alAlerta(alerta);
   });
   detector.on('actualizacion', (a) => {
     const id = idsAlerta.get(a.id);
@@ -53,34 +86,16 @@ function crearServidor({ db, config, log = console.log }) {
     difundir(wssPanel, { tipo: 'alerta_actualizada', alerta: { id, dispositivos: a.dispositivos.length, pga_max: a.pgaMax } });
   });
 
-  /* ---------- HTTP: panel y API ---------- */
-  const app = express();
-  app.disable('x-powered-by');
-  app.use((req, res, next) => {
-    res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' });
-    next();
-  });
-  app.use(express.json({ limit: '10kb' }));
-  // Las peticiones que modifican algo deben ser JSON: un formulario de otro sitio no puede enviarlas.
-  app.use('/api', (req, res, next) => {
-    if (req.method === 'POST' && !req.is('application/json')) return res.status(415).json({ error: 'Se esperaba JSON' });
-    next();
-  });
-  app.use(express.static(path.join(__dirname, '..', 'dashboard')));
-  app.use('/vendor/chart.js', express.static(path.join(__dirname, '..', 'node_modules', 'chart.js', 'dist')));
-
-  /* sesión */
+  /* ---------- API del panel de la empresa ---------- */
   app.post('/api/login', auth.login);
   app.post('/api/logout', (req, res) => {
     const u = auth.logout(req, res);
     if (u) for (const ws of wssPanel.clients) if (ws.tokenHash === u.tokenHash) ws.close(4401, 'Sesión cerrada');
   });
   app.get('/api/sesion', auth.requerir(), (req, res) => {
-    const { usuario, nombre, rol } = req.usuario;
+    const { usuario, nombre, rol } = req.cuenta;
     res.json({ usuario: { usuario, nombre, rol } });
   });
-
-  /* datos (requieren sesión) */
   app.get('/api/estado', auth.requerir(), (req, res) => {
     res.json({
       dispositivos: [...estado.values()].map(resumen),
@@ -89,7 +104,6 @@ function crearServidor({ db, config, log = console.log }) {
       config: { umbral: config.UMBRAL_G, modoSimulacion: config.MODO_SIMULACION },
     });
   });
-
   // Solo un administrador puede ordenar una simulación.
   app.post('/api/simulacion', auth.requerir('admin'), (req, res) => {
     if (!config.MODO_SIMULACION) return res.status(403).json({ error: 'El modo simulación está desactivado' });
@@ -97,7 +111,7 @@ function crearServidor({ db, config, log = console.log }) {
     if (!v.ok) return res.status(400).json({ error: v.error });
     const orden = { tipo: 'simular_sismo', ...v.datos, inicio: Date.now() };
     const enviados = difundir(wssDispositivos, orden);
-    log(`[SIMULACIÓN] ${req.usuario.usuario} envió un sismo M${v.datos.magnitud} en (${v.datos.lat}, ${v.datos.lon}) a ${enviados} dispositivos`);
+    log(`[SIMULACIÓN] ${req.cuenta.usuario} envió un sismo M${v.datos.magnitud} en (${v.datos.lat}, ${v.datos.lon}) a ${enviados} dispositivos`);
     res.status(202).json({ enviados });
   });
 
@@ -108,24 +122,22 @@ function crearServidor({ db, config, log = console.log }) {
   });
 
   /* ---------- WebSocket ---------- */
-  const server = http.createServer(app);
-  const wssDispositivos = new WebSocketServer({ noServer: true, maxPayload: 1024 });
-  const wssPanel = new WebSocketServer({ noServer: true, maxPayload: 1024 });
-
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = new URL(req.url, 'http://localhost');
-    const destino = pathname === '/ws/dispositivo' ? wssDispositivos : pathname === '/ws/panel' ? wssPanel : null;
-    if (!destino) return socket.destroy();
-    // El panel solo recibe datos en vivo si quien lo abre tiene una sesión válida.
-    const usuario = destino === wssPanel ? auth.usuarioDeRequest(req) : null;
-    if (destino === wssPanel && !usuario) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
-      return socket.destroy();
+    if (pathname === '/ws/cliente') return portal.aceptarConexion(req, socket, head);
+    if (pathname === '/ws/dispositivo') {
+      return wssDispositivos.handleUpgrade(req, socket, head, (ws) => wssDispositivos.emit('connection', ws, req));
     }
-    destino.handleUpgrade(req, socket, head, (ws) => {
-      if (usuario) ws.tokenHash = usuario.tokenHash;
-      destino.emit('connection', ws, req);
-    });
+    if (pathname === '/ws/panel') {
+      // El panel solo recibe datos en vivo si quien lo abre tiene una sesión válida.
+      const usuario = auth.cuentaDeRequest(req);
+      if (!usuario) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+        return socket.destroy();
+      }
+      return wssPanel.handleUpgrade(req, socket, head, (ws) => { ws.tokenHash = usuario.tokenHash; });
+    }
+    socket.destroy();
   });
 
   wssDispositivos.on('connection', (ws) => {
@@ -149,18 +161,28 @@ function crearServidor({ db, config, log = console.log }) {
         e.socket = ws;
         e.enLinea = true;
         db.marcarConexion(id, new Date().toISOString());
-        enviar(ws, { tipo: 'bienvenida', umbral: config.UMBRAL_G });
+        // Cada dispositivo trabaja con el umbral que eligió su dueño en la app.
+        enviar(ws, { tipo: 'bienvenida', umbral: e.d.umbral ?? config.UMBRAL_G });
         difundir(wssPanel, { tipo: 'dispositivo', dispositivo: resumen(e) });
+        portal.alDispositivo(e);
         return;
       }
 
       const e = estado.get(id);
-      if (m.tipo === 'lectura') {
-        const magnitud = Math.hypot(m.x, m.y, m.z);
-        e.ultima = { x: m.x, y: m.y, z: m.z, m: magnitud };
-        e.pico = Math.max(e.pico, magnitud);
-      } else if (m.tipo === 'evento') {
-        registrarEvento(e, m.pga);
+      switch (m.tipo) {
+        case 'lectura': {
+          const magnitud = Math.hypot(m.x, m.y, m.z);
+          e.ultima = { x: m.x, y: m.y, z: m.z, m: magnitud };
+          e.pico = Math.max(e.pico, magnitud);
+          break;
+        }
+        case 'evento': registrarEvento(e, m.pga); break;
+        case 'estado':
+          e.bateria = m.bateria;
+          e.wifi = m.wifi;
+          portal.alDispositivo(e);
+          break;
+        case 'prueba_ok': portal.alPrueba(e); break;
       }
     });
 
@@ -172,6 +194,7 @@ function crearServidor({ db, config, log = console.log }) {
       e.enLinea = false;
       e.ultima = null;
       difundir(wssPanel, { tipo: 'dispositivo', dispositivo: resumen(e) });
+      portal.alDispositivo(e);
     });
   });
 
@@ -181,31 +204,30 @@ function crearServidor({ db, config, log = console.log }) {
     const id = db.guardarEvento({ dispositivo_id: e.d.id, fecha, pga });
     e.alertaHasta = ahora + config.DURACION_ALERTA_MS;
     log(`[EVENTO] ${e.d.nombre} (${e.d.ciudad}) superó el umbral · ${pga.toFixed(3)} g`);
-    difundir(wssPanel, {
-      tipo: 'evento',
-      evento: { id, dispositivo_id: e.d.id, nombre: e.d.nombre, ciudad: e.d.ciudad, fecha, pga },
-      dispositivo: resumen(e),
-    });
+    const evento = { id, dispositivo_id: e.d.id, nombre: e.d.nombre, ciudad: e.d.ciudad, fecha, pga };
+    difundir(wssPanel, { tipo: 'evento', evento, dispositivo: resumen(e) });
+    portal.alEvento(e, evento);
     detector.registrarEvento({ id: e.d.id, lat: e.d.lat, lon: e.d.lon, pga, t: ahora });
   }
 
-  // Las lecturas llegan 10 veces por segundo por dispositivo; al panel se envían agrupadas.
+  // Las lecturas llegan 10 veces por segundo por dispositivo; a las pantallas se envían agrupadas.
   const temporizador = setInterval(() => {
-    if (wssPanel.clients.size === 0) return;
     const datos = [];
     for (const e of estado.values()) {
       if (!e.enLinea || !e.ultima) continue;
       datos.push({ id: e.d.id, m: Math.max(e.pico, e.ultima.m), x: e.ultima.x, y: e.ultima.y, z: e.ultima.z, alerta: Date.now() < e.alertaHasta });
       e.pico = 0;
     }
-    difundir(wssPanel, { tipo: 'lecturas', t: Date.now(), datos });
-  }, INTERVALO_PANEL_MS);
+    if (wssPanel.clients.size) difundir(wssPanel, { tipo: 'lecturas', t: Date.now(), datos });
+    portal.alLecturas(datos);
+  }, INTERVALO_LECTURAS_MS);
 
   const limpieza = setInterval(() => db.borrarSesionesVencidas(Date.now()), 60_000);
 
   function cerrar() {
     clearInterval(temporizador);
     clearInterval(limpieza);
+    portal.cerrar();
     for (const ws of [...wssDispositivos.clients, ...wssPanel.clients]) ws.terminate();
     return new Promise((resolver) => server.close(resolver));
   }

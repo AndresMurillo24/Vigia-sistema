@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mi Vigía</title>
+  <meta name="theme-color" content="#1b7867">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/logo.svg">
+  <link rel="stylesheet" href="cliente.css">
+</head>
+<body>
+  <!-- Acceso: ingresar o crear cuenta -->
+  <main class="pantalla acceso" id="pAcceso" hidden>
+    <img src="/logo.svg" alt="" width="72" height="72">
+    <h1>Mi Vigía</h1>
+    <p class="sub">Tu alerta sísmica en casa</p>
+    <div class="pestanas" role="tablist">
+      <button type="button" role="tab" id="tabIngresar" aria-selected="true">Ingresar</button>
+      <button type="button" role="tab" id="tabRegistro" aria-selected="false">Crear cuenta</button>
+    </div>
+    <form id="fIngresar" novalidate>
+      <label>Correo <input name="correo" type="email" autocomplete="email" required></label>
+      <label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
+      <p class="error" role="alert"></p>
+      <button type="submit" class="boton">Ingresar</button>
+    </form>
+    <form id="fRegistro" novalidate hidden>
+      <label>Nombre <input name="nombre" autocomplete="name" required></label>
+      <label>Correo <input name="correo" type="email" autocomplete="email" required></label>
+      <label>Contraseña <small>(mínimo 8 caracteres)</small> <input name="clave" type="password" autocomplete="new-password" minlength="8" required></label>
+      <p class="error" role="alert"></p>
+      <button type="submit" class="boton">Crear cuenta</button>
+    </form>
+    <p class="pie"><a href="/login.html">¿Trabajas en Vigía? Panel de la empresa</a></p>
+  </main>
+
+  <!-- Vincular dispositivo -->
+  <main class="pantalla acceso" id="pVincular" hidden>
+    <img src="/logo.svg" alt="" width="64" height="64">
+    <h1>Vincula tu dispositivo</h1>
+    <p class="sub">Escribe el código que viene en la caja y en la parte de atrás de tu Vigía.</p>
+    <form id="fVincular" novalidate>
+      <label>Código del dispositivo <input name="codigo" placeholder="VG-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" required></label>
+      <p class="error" role="alert"></p>
+      <button type="submit" class="boton">Vincular</button>
+    </form>
+    <button type="button" class="enlace" id="bVolver" hidden>Volver</button>
+    <button type="button" class="enlace" data-salir>Cerrar sesión</button>
+  </main>
+
+  <!-- App -->
+  <div class="pantalla app" id="pApp" hidden>
+    <header class="barra">
+      <img src="/logo.svg" alt="" width="36" height="36">
+      <div><p class="marca">Mi Vigía</p><p class="hola" id="hola"></p></div>
+      <span class="chip" id="conexion">Conectando…</span>
+    </header>
+
+    <main>
+      <section id="tInicio" aria-labelledby="hInicio">
+        <h2 id="hInicio" class="oculto">Inicio</h2>
+        <div id="listaDispositivos"></div>
+        <article class="tarjeta consejos">
+          <h3>Si hay un sismo</h3>
+          <ol>
+            <li><b>Agáchate</b> al piso.</li>
+            <li><b>Cúbrete</b> bajo una mesa firme o junto a un muro interior.</li>
+            <li><b>Sujétate</b> hasta que pare el movimiento. Aléjate de ventanas.</li>
+          </ol>
+        </article>
+        <article class="tarjeta" id="avisoContactos"></article>
+      </section>
+
+      <section id="tHistorial" hidden aria-labelledby="hHistorial">
+        <h2 id="hHistorial">Historial</h2>
+        <h3>Alertas de sismo</h3>
+        <ul class="lista" id="listaAlertas"></ul>
+        <h3>Lo que detectaron tus dispositivos</h3>
+        <ul class="lista" id="listaEventos"></ul>
+      </section>
+
+      <section id="tAjustes" hidden aria-labelledby="hAjustes">
+        <h2 id="hAjustes">Ajustes</h2>
+        <div id="ajustesDispositivos"></div>
+        <article class="tarjeta">
+          <h3>Contactos de emergencia</h3>
+          <p class="nota">Personas a quienes avisar si marcas «Necesito ayuda». Hasta 5.</p>
+          <ul class="lista" id="listaContactos"></ul>
+          <form id="fContacto" class="form-contacto" novalidate>
+            <label>Nombre <input name="nombre" autocomplete="off" required></label>
+            <label>Teléfono <input name="telefono" type="tel" inputmode="tel" autocomplete="off" required></label>
+            <label>Relación
+              <select name="relacion"><option>Familiar</option><option>Vecino</option><option>Amigo</option><option>Otro</option></select>
+            </label>
+            <p class="error" role="alert"></p>
+            <button type="submit" class="boton secundario">Agregar contacto</button>
+          </form>
+        </article>
+        <div class="acciones">
+          <button type="button" class="boton secundario" id="bOtro">Vincular otro dispositivo</button>
+          <button type="button" class="boton peligro" data-salir>Cerrar sesión</button>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabs" aria-label="Secciones">
+      <button type="button" data-tab="tInicio" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg>Inicio</button>
+      <button type="button" data-tab="tHistorial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 1-9 9h2a7 7 0 1 0 2.05-4.95L9 9H3V3l2.64 2.64A8.97 8.97 0 0 1 12 3zm-1 4h2v5l4 2.4-1 1.7-5-3z"/></svg>Historial</button>
+      <button type="button" data-tab="tAjustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z"/></svg>Ajustes</button>
+    </nav>
+  </div>
+
+  <!-- Alerta de sismo a pantalla completa -->
+  <div class="alerta" id="alerta" role="alertdialog" aria-modal="true" aria-labelledby="alT" aria-describedby="alD" hidden>
+    <div class="alerta-caja">
+      <p class="alerta-k">Alerta sísmica Vigía</p>
+      <h2 id="alT">¡SISMO!</h2>
+      <p class="alerta-paso">Agáchate · Cúbrete · Sujétate</p>
+      <p id="alD" class="alerta-d"></p>
+      <div class="alerta-botones" id="alBotones">
+        <button type="button" class="boton bien" data-resp="bien">Estoy bien</button>
+        <button type="button" class="boton ayuda" data-resp="ayuda">Necesito ayuda</button>
+      </div>
+      <p class="alerta-gracias" id="alGracias" hidden></p>
+      <button type="button" class="enlace claro" id="alCerrar">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="cliente.js"></script>
+</body>
+</html>

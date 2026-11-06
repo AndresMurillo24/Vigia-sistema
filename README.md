@@ -7,7 +7,8 @@ Vigía es un dispositivo para el hogar que detecta sismos con un acelerómetro y
 |---|---|---|
 | Simulador de dispositivos | `simulador/` | Imita el firmware del ESP32 en 12 casas de Colombia: lee el acelerómetro 10 veces por segundo, detecta vibraciones y activa la alarma. |
 | Plataforma central | `servidor/` | Recibe las lecturas por WebSocket, confirma si hay un sismo real, guarda todo en SQLite y avisa a toda la red. |
-| Panel de monitoreo | `dashboard/` | Página web con el mapa de dispositivos, la gráfica en vivo, las alertas y un botón para simular sismos. |
+| Panel de la empresa | `dashboard/` | Para el admin y los operadores: mapa de toda la red, gráfica en vivo, alertas y simulación de sismos. |
+| App del cliente «Mi Vigía» | `dashboard/cliente/` | Para cada hogar: estado de su dispositivo, alerta de sismo con «Estoy bien», historial, sensibilidad y contactos de emergencia. |
 | Pruebas | `tests/` | Pruebas automáticas de la lógica, la validación, la seguridad y el flujo completo. |
 
 ## Arquitectura
@@ -55,7 +56,9 @@ npm start
 ```
 
 La primera vez, la terminal muestra la contraseña del usuario **admin** (se genera al azar). Guárdala.
-Abre **http://localhost:3000**, inicia sesión y verás los 12 dispositivos en línea. En la tarjeta *Simular un sismo* elige un epicentro y una magnitud y pulsa el botón: en la terminal y en el panel se ve todo el proceso.
+
+- **Panel de la empresa:** http://localhost:3000 → inicia sesión con `admin`.
+- **App del cliente:** http://localhost:3000/cliente → crea una cuenta y vincula un dispositivo con su código (ver abajo). En el celular se puede instalar como app desde el menú del navegador («Agregar a la pantalla de inicio»). En la tarjeta *Simular un sismo* elige un epicentro y una magnitud y pulsa el botón: en la terminal y en el panel se ve todo el proceso.
 
 | Comando | Para qué |
 |---|---|
@@ -67,6 +70,34 @@ Abre **http://localhost:3000**, inicia sesión y verás los 12 dispositivos en l
 
 Para usar otro puerto: `PUERTO=4000 npm start` (en PowerShell: `$env:PUERTO=4000; npm start`).
 Para fijar la contraseña inicial del admin en vez de generarla: `ADMIN_CLAVE=tu-clave npm start` (solo aplica cuando la base de datos está vacía).
+
+## App del cliente «Mi Vigía»
+
+Cada familia que compra Vigía usa esta app desde el celular. Tiene letra grande, botones amplios y alto contraste para que la usen también adultos mayores.
+
+| Función | Requerimiento |
+|---|---|
+| Crear cuenta e iniciar sesión | RNF Seguridad |
+| **Vincular** el dispositivo con el código de la caja (`VG-XXXX-XXXX`) | RF06 |
+| Ver en vivo el estado de su dispositivo: conexión, batería, WiFi, sensibilidad y vibración de los últimos 30 s | RF05 |
+| **Alerta a pantalla completa** con sonido y vibración cuando hay un sismo, con la distancia a su casa | RF05 |
+| Responder **«Estoy bien»** o **«Necesito ayuda»**; la respuesta llega al panel de la empresa | RF05 |
+| **Historial** de alertas y de lo que detectaron sus dispositivos | RF04 |
+| Cambiar el **nombre, la dirección y la sensibilidad** (umbral entre 0,05 y 0,40 g); el nuevo umbral le llega al dispositivo | RF01, RF06 |
+| **Probar la alarma** desde el celular | RF02 |
+| Hasta 5 **contactos de emergencia** | RF06 |
+
+Para probarla, usa el código de alguno de estos dispositivos simulados (los demás están en `simulador/dispositivos.json`):
+
+| Dispositivo | Código |
+|---|---|
+| Casa Chapinero (Bogotá) | `VG-RRPR-A5S9` |
+| Casa Suba (Bogotá) | `VG-KVA7-RFR5` |
+| Casa Kennedy (Bogotá) | `VG-GZUL-M2R4` |
+
+Luego, desde el panel de la empresa, simula un sismo en Paratebueno: el celular del cliente muestra la alerta.
+
+> El aviso a los contactos de emergencia por mensaje de texto no está implementado todavía: la app guarda la respuesta y muestra a quién se avisaría.
 
 ## Usuarios del panel
 
@@ -90,6 +121,11 @@ Los valores se cambian en `servidor/config.js`. El modelo de propagación de `si
 
 - **Inicio de sesión del panel**: contraseñas con **scrypt** y sal aleatoria; sesiones guardadas en el servidor con cookie `HttpOnly` y `SameSite=Strict`; bloqueo de 15 minutos tras 5 intentos fallidos; el mismo mensaje de error para usuario inexistente y contraseña incorrecta; roles `admin` y `operador`.
 - El canal en vivo del panel (`/ws/panel`) y la API exigen sesión; simular sismos exige rol `admin`.
+- **Las cuentas de clientes están separadas de las del panel**: tienen su propia cookie y sus propias sesiones, así que una sesión de cliente no abre el panel de la empresa ni al revés.
+- **Cada cliente solo ve y modifica sus propios dispositivos y contactos**: toda consulta filtra por el cliente de la sesión, y un identificador ajeno responde 404. Esto evita la vulnerabilidad IDOR (cambiar un id en la URL para ver datos de otra persona).
+- El código de vinculación se guarda como hash, un dispositivo ya vinculado no se puede tomar desde otra cuenta y hay un límite de 10 códigos incorrectos por hora.
+- La sensibilidad solo acepta valores seguros (0,05–0,40 g), para que nadie desactive su alarma por error.
+- La app del cliente escapa todo texto antes de mostrarlo, para evitar XSS.
 - Cada dispositivo se autentica con un **token**; la base de datos solo guarda su **hash SHA-256** y la comparación es en tiempo constante.
 - **Validación con lista blanca** de todos los mensajes: tipos permitidos, números finitos y rangos físicos posibles (±16 g). Mensajes de máximo 1 KB.
 - **Consultas SQL con parámetros** (sin concatenar texto) para evitar inyección SQL.
@@ -110,6 +146,7 @@ Los valores se cambian en `servidor/config.js`. El modelo de propagación de `si
 │   ├── db.js              # base de datos SQLite
 │   ├── validacion.js      # validación de mensajes
 │   ├── auth.js            # inicio de sesión, sesiones y roles
+│   ├── portal-cliente.js  # API y canal en vivo de la app del cliente
 │   ├── seguridad.js       # tokens y contraseñas
 │   ├── semilla.js         # registra los dispositivos simulados
 │   └── config.js          # umbrales y parámetros
@@ -118,7 +155,8 @@ Los valores se cambian en `servidor/config.js`. El modelo de propagación de `si
 │   ├── modelo.js          # propagación simplificada de las ondas
 │   └── dispositivos.json  # las 12 casas simuladas
 ├── scripts/usuario.js     # crear usuarios del panel
-├── dashboard/             # panel web (login.html + index.html)
+├── dashboard/             # panel de la empresa (login.html + index.html)
+│   └── cliente/           # app del cliente «Mi Vigía»
 └── tests/                 # pruebas con node:test
 ```
 
