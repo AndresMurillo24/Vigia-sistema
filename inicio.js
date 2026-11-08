@@ -12,4 +12,4 @@
 const { iniciarServidor } = require('./servidor');
 const { iniciarSimulador } = require('./simulador');
 
-iniciarServidor().then(() => iniciarSimulador());
+iniciarServidor().then(({ url, tls }) => iniciarSimulador({ url, autofirmado: !!tls?.autofirmado }));

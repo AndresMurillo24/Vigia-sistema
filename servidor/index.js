@@ -13,17 +13,22 @@ const { abrirBaseDatos } = require('./db');
 const { sembrarDispositivos } = require('./semilla');
 const { crearServidor } = require('./app');
 const { asegurarAdministrador } = require('./auth');
+const { obtenerCertificado } = require('./certificado');
+const path = require('node:path');
 
 function iniciarServidor() {
   const db = abrirBaseDatos(config.RUTA_DB);
   const n = sembrarDispositivos(db);
   asegurarAdministrador(db);
-  const plataforma = crearServidor({ db, config });
+  const tls = config.HTTPS ? obtenerCertificado(path.dirname(config.RUTA_DB)) : null;
+  const plataforma = crearServidor({ db, config, tls });
+  const protocolo = tls ? 'https' : 'http';
   return new Promise((resolver) => {
     plataforma.server.listen(config.PUERTO, () => {
-      console.log(`Plataforma Vigía lista · ${n} dispositivos registrados`);
-      console.log(`Panel de monitoreo: http://localhost:${config.PUERTO}`);
-      resolver(plataforma);
+      console.log(`Plataforma Vigía lista · ${n} dispositivos registrados${tls ? ' · conexión cifrada (HTTPS/WSS)' : ''}`);
+      console.log(`Panel de la empresa: ${protocolo}://localhost:${config.PUERTO}`);
+      console.log(`App del cliente:     ${protocolo}://localhost:${config.PUERTO}/cliente`);
+      resolver({ ...plataforma, tls, url: `${tls ? 'wss' : 'ws'}://localhost:${config.PUERTO}/ws/dispositivo` });
     });
   });
 }
