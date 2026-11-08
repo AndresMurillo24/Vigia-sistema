@@ -24,7 +24,7 @@ const MAX_INTENTOS_CODIGO = 10; // por cuenta y por hora, para que no se puedan 
  * (cliente_id). Así un cliente no puede ver ni modificar el dispositivo de otro cambiando
  * un identificador en la URL (vulnerabilidad IDOR).
  */
-function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, avisarPanel }) {
+function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, avisarPanel, alPedirAyuda = () => {} }) {
   const auth = crearAutenticacion({
     config, log,
     cookie: 'vigia_cliente',
@@ -159,6 +159,7 @@ function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, 
     const conteo = db.conteoRespuestas(r.datos.alertaId);
     log(`[CLIENTE] ${req.cuenta.correo} respondió «${r.datos.estado}» a la alerta ${r.datos.alertaId}`);
     avisarPanel({ tipo: 'respuesta', alertaId: r.datos.alertaId, ...conteo });
+    alPedirAyuda(); // actualiza la lista de solicitudes de ayuda del panel
     res.json({ ok: true, conteo });
   });
 
@@ -177,6 +178,7 @@ function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, 
     aceptarConexion,
     alDispositivo: (e) => { if (e.d.cliente_id) enviarCliente(e.d.cliente_id, { tipo: 'dispositivo', dispositivo: vista(e) }); },
     alEvento: (e, evento) => { if (e.d.cliente_id) enviarCliente(e.d.cliente_id, { tipo: 'evento', evento, dispositivo: vista(e) }); },
+    alDesvincular: (clienteId, dispositivoId) => enviarCliente(clienteId, { tipo: 'desvinculado', id: dispositivoId }),
     alPrueba: (e) => { if (e.d.cliente_id) enviarCliente(e.d.cliente_id, { tipo: 'prueba_ok', id: e.d.id }); },
     alAlerta: (a) => {
       const clientes = new Set([...wss.clients].map((ws) => ws.clienteId));

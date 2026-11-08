@@ -4,8 +4,8 @@
   Archivo:  dashboard/index.html
   Tipo:     HTML
   Capa:     Capa de presentación · panel de la empresa
-  Qué hace: Estructura del panel de monitoreo: indicadores, mapa, gráfica, simulación, tabla de
-            dispositivos e historial.
+  Qué hace: Estructura del panel de la empresa: monitoreo en vivo (mapa, gráfica, simulación),
+            historial con filtros, dispositivos y clientes, y solicitudes de ayuda.
 -->
 <html lang="es">
 <head>
@@ -28,12 +28,19 @@
     </div>
   </header>
 
+  <nav class="vistas" aria-label="Secciones del panel">
+    <button type="button" data-vista="vMonitoreo" aria-current="page">Monitoreo</button>
+    <button type="button" data-vista="vHistorial">Historial</button>
+    <button type="button" data-vista="vRed">Dispositivos y clientes</button>
+    <button type="button" data-vista="vAyuda">Solicitudes de ayuda <span class="contador" id="contAyuda" hidden>0</span></button>
+  </nav>
+
   <div class="aviso" id="aviso" role="alert" hidden>
     <strong>ALERTA SÍSMICA</strong>
     <span id="avisoTexto"></span>
   </div>
 
-  <main>
+  <main id="vMonitoreo">
     <section class="kpis" aria-label="Resumen">
       <div class="kpi"><span>Dispositivos en línea</span><strong id="kEnLinea">–</strong></div>
       <div class="kpi"><span>En alerta ahora</span><strong id="kAlerta">–</strong></div>
@@ -88,8 +95,47 @@
     </section>
   </main>
 
+  <!-- Historial consultable (RF04) -->
+  <main id="vHistorial" class="vista" hidden>
+    <section class="tarjeta">
+      <header><h2>Historial</h2><p>Busca eventos de los dispositivos o alertas confirmadas y expórtalos a Excel (CSV)</p></header>
+      <form id="fFiltros" class="filtros">
+        <label>Buscar <select name="tipo"><option value="eventos">Eventos de dispositivos</option><option value="alertas">Alertas confirmadas</option></select></label>
+        <label>Desde <input type="date" name="desde"></label>
+        <label>Hasta <input type="date" name="hasta"></label>
+        <label>Ciudad <select name="ciudad"><option value="">Todas</option></select></label>
+        <label>Aceleración mínima (g) <input type="number" name="min" min="0" max="16" step="0.01" placeholder="0,15"></label>
+        <div class="botones"><button type="submit" class="boton">Buscar</button><a class="boton secundario" id="bCSV" href="/api/historial.csv" download>Exportar CSV</a></div>
+      </form>
+      <p class="estado" id="hEstado" aria-live="polite"></p>
+      <div class="desplazable"><table id="tHistorial"></table></div>
+      <div class="paginas"><button type="button" class="salir" id="hAnterior">Anterior</button><span id="hPagina"></span><button type="button" class="salir" id="hSiguiente">Siguiente</button></div>
+    </section>
+  </main>
+
+  <!-- Dispositivos y clientes -->
+  <main id="vRed" class="vista" hidden>
+    <section class="tarjeta">
+      <header><h2>Dispositivos</h2><p id="rResumen"></p></header>
+      <div class="desplazable"><table id="tRedDispositivos"></table></div>
+    </section>
+    <section class="tarjeta">
+      <header><h2>Clientes</h2><p>Hogares registrados en la app Mi Vigía</p></header>
+      <div class="desplazable"><table id="tClientes"></table></div>
+    </section>
+  </main>
+
+  <!-- Solicitudes de ayuda -->
+  <main id="vAyuda" class="vista" hidden>
+    <section class="tarjeta">
+      <header><h2>Solicitudes de ayuda</h2><p>Hogares que marcaron «Necesito ayuda» en la app después de un sismo. Llama a sus contactos y marca la solicitud como atendida.</p></header>
+      <div id="listaAyuda" class="solicitudes"></div>
+    </section>
+  </main>
+
   <script src="/vendor/chart.js/chart.umd.js"></script>
   <script src="mapa-colombia.js"></script>
   <script src="app.js"></script>
+  <script src="gestion.js"></script>
 </body>
 </html>

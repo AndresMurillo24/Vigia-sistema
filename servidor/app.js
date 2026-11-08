@@ -9,6 +9,7 @@
 'use strict';
 
 const http = require('node:http');
+const https = require('node:https');
 const path = require('node:path');
 const express = require('express');
 const { WebSocketServer, WebSocket } = require('ws');
@@ -17,6 +18,7 @@ const { validarMensajeDispositivo, validarSimulacion } = require('./validacion')
 const { verificarToken } = require('./seguridad');
 const { autenticacionPanel } = require('./auth');
 const { crearPortalCliente } = require('./portal-cliente');
+const { montarGestion } = require('./gestion');
 
 const INTERVALO_LECTURAS_MS = 200; // cada cuánto se envían las lecturas agrupadas a las pantallas
 const TIEMPO_AUTENTICACION_MS = 5000;
@@ -25,7 +27,7 @@ const TIEMPO_AUTENTICACION_MS = 5000;
  * Crea la plataforma central: API REST, panel de la empresa, portal de los clientes y los
  * canales WebSocket (/ws/dispositivo, /ws/panel y /ws/cliente).
  */
-function crearServidor({ db, config, log = console.log }) {
+function crearServidor({ db, config, log = console.log, tls = null }) {
   const auth = autenticacionPanel({ db, config, log });
 
   /* ---------- estado en memoria de cada dispositivo ---------- */
@@ -42,7 +44,15 @@ function crearServidor({ db, config, log = console.log }) {
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
-    res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' });
+    res.set({
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      // Política de contenido: el navegador solo ejecuta scripts servidos por la propia plataforma.
+      'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    });
+    // Con HTTPS, el navegador recuerda usar siempre la conexión cifrada.
+    if (tls) res.set('Strict-Transport-Security', 'max-age=31536000');
     next();
   });
   app.use(express.json({ limit: '10kb' }));
@@ -54,7 +64,8 @@ function crearServidor({ db, config, log = console.log }) {
   app.use(express.static(path.join(__dirname, '..', 'dashboard')));
   app.use('/vendor/chart.js', express.static(path.join(__dirname, '..', 'node_modules', 'chart.js', 'dist')));
 
-  const server = http.createServer(app);
+  // Con certificado TLS la plataforma usa HTTPS y WSS (datos cifrados, RNF de seguridad).
+  const server = tls ? https.createServer(tls, app) : http.createServer(app);
   const wssDispositivos = new WebSocketServer({ noServer: true, maxPayload: 1024 });
   const wssPanel = new WebSocketServer({ noServer: true, maxPayload: 1024 });
 
@@ -67,6 +78,7 @@ function crearServidor({ db, config, log = console.log }) {
   const portal = crearPortalCliente({
     app, db, config, log, estado, enviarADispositivo,
     avisarPanel: (m) => difundir(wssPanel, m),
+    alPedirAyuda: () => gestion.avisarSolicitudes(),
   });
 
   /* ---------- detector de sismos ---------- */
@@ -123,6 +135,9 @@ function crearServidor({ db, config, log = console.log }) {
     res.status(202).json({ enviados });
   });
 
+  /* ---------- gestión: historial, red y solicitudes de ayuda ---------- */
+  const gestion = montarGestion({ app, db, auth, estado, portal, log, avisarPanel: (m) => difundir(wssPanel, m) });
+
   app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'JSON inválido' });
     log('[ERROR]', err);
@@ -168,7 +183,8 @@ function crearServidor({ db, config, log = console.log }) {
         if (e.socket && e.socket !== ws) e.socket.close(4004, 'Reemplazado por una nueva conexión');
         e.socket = ws;
         e.enLinea = true;
-        db.marcarConexion(id, new Date().toISOString());
+        e.d.ultima_conexion = new Date().toISOString();
+        db.marcarConexion(id, e.d.ultima_conexion);
         // Cada dispositivo trabaja con el umbral que eligió su dueño en la app.
         enviar(ws, { tipo: 'bienvenida', umbral: e.d.umbral ?? config.UMBRAL_G });
         difundir(wssPanel, { tipo: 'dispositivo', dispositivo: resumen(e) });
@@ -184,7 +200,7 @@ function crearServidor({ db, config, log = console.log }) {
           e.pico = Math.max(e.pico, magnitud);
           break;
         }
-        case 'evento': registrarEvento(e, m.pga); break;
+        case 'evento': registrarEvento(e, m.pga, m.t); break;
         case 'estado':
           e.bateria = m.bateria;
           e.wifi = m.wifi;
@@ -206,13 +222,21 @@ function crearServidor({ db, config, log = console.log }) {
     });
   });
 
-  function registrarEvento(e, pga) {
+  function registrarEvento(e, pga, t = Date.now()) {
     const ahora = Date.now();
-    const fecha = new Date(ahora).toISOString();
+    const fecha = new Date(t).toISOString();
     const id = db.guardarEvento({ dispositivo_id: e.d.id, fecha, pga });
+    const evento = { id, dispositivo_id: e.d.id, nombre: e.d.nombre, ciudad: e.d.ciudad, fecha, pga };
+    // Un evento que el dispositivo guardó mientras estaba sin conexión se registra en el historial,
+    // pero ya no sirve para confirmar un sismo en curso.
+    if (ahora - t > config.VENTANA_CONFIRMACION_MS) {
+      log(`[EVENTO DIFERIDO] ${e.d.nombre} (${e.d.ciudad}) · ${pga.toFixed(3)} g detectado sin conexión a las ${fecha}`);
+      difundir(wssPanel, { tipo: 'evento', evento, dispositivo: resumen(e) });
+      portal.alEvento(e, evento);
+      return;
+    }
     e.alertaHasta = ahora + config.DURACION_ALERTA_MS;
     log(`[EVENTO] ${e.d.nombre} (${e.d.ciudad}) superó el umbral · ${pga.toFixed(3)} g`);
-    const evento = { id, dispositivo_id: e.d.id, nombre: e.d.nombre, ciudad: e.d.ciudad, fecha, pga };
     difundir(wssPanel, { tipo: 'evento', evento, dispositivo: resumen(e) });
     portal.alEvento(e, evento);
     detector.registrarEvento({ id: e.d.id, lat: e.d.lat, lon: e.d.lon, pga, t: ahora });

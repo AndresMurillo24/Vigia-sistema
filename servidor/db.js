@@ -87,6 +87,11 @@ const COLUMNAS_NUEVAS = {
     umbral: 'REAL NOT NULL DEFAULT 0.15',
     direccion: "TEXT NOT NULL DEFAULT ''",
   },
+  respuestas: {
+    atendida: 'INTEGER NOT NULL DEFAULT 0',
+    atendida_por: 'TEXT',
+    atendida_fecha: 'TEXT',
+  },
 };
 
 function migrar(db) {
@@ -172,7 +177,53 @@ function abrirBaseDatos(ruta) {
     respuestaDeCliente: db.prepare('SELECT estado FROM respuestas WHERE alerta_id = ? AND cliente_id = ?'),
     conteoRespuestas: db.prepare(`
       SELECT SUM(estado = 'bien') AS bien, SUM(estado = 'ayuda') AS ayuda FROM respuestas WHERE alerta_id = ?`),
+    // gestión desde el panel de la empresa
+    ciudades: db.prepare('SELECT DISTINCT ciudad FROM dispositivos ORDER BY ciudad'),
+    clientesResumen: db.prepare(`
+      SELECT c.id, c.nombre, c.correo, c.creado,
+        (SELECT COUNT(*) FROM dispositivos d WHERE d.cliente_id = c.id) AS dispositivos,
+        (SELECT COUNT(*) FROM contactos k WHERE k.cliente_id = c.id) AS contactos
+      FROM clientes c ORDER BY c.creado DESC`),
+    desvincular: db.prepare("UPDATE dispositivos SET cliente_id = NULL, umbral = 0.15, direccion = '' WHERE id = ? AND cliente_id IS NOT NULL"),
+    solicitudesAyuda: db.prepare(`
+      SELECT r.id, r.alerta_id, r.fecha, r.atendida, r.atendida_por, r.atendida_fecha, c.id AS cliente_id, c.nombre, c.correo
+      FROM respuestas r JOIN clientes c ON c.id = r.cliente_id
+      WHERE r.estado = 'ayuda' ORDER BY r.atendida, r.fecha DESC LIMIT ?`),
+    atenderSolicitud: db.prepare("UPDATE respuestas SET atendida = 1, atendida_por = ?, atendida_fecha = ? WHERE id = ? AND estado = 'ayuda' AND atendida = 0"),
+    pendientesAyuda: db.prepare("SELECT COUNT(*) AS n FROM respuestas WHERE estado = 'ayuda' AND atendida = 0"),
   };
+
+  /**
+   * Historial consultable (RF04). Los filtros se agregan como parámetros (?), nunca
+   * concatenando texto del usuario en la consulta.
+   */
+  function historial(tipo, f, limite, desplazamiento) {
+    const cond = [], params = [];
+    if (tipo === 'alertas') {
+      if (f.desde) { cond.push('a.fecha >= ?'); params.push(f.desde); }
+      if (f.hasta) { cond.push('a.fecha < ?'); params.push(f.hasta); }
+      if (f.min != null) { cond.push('a.pga_max >= ?'); params.push(f.min); }
+      const donde = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+      const total = db.prepare(`SELECT COUNT(*) AS n FROM alertas a ${donde}`).get(...params).n;
+      const items = db.prepare(`
+        SELECT a.*,
+          (SELECT COUNT(*) FROM respuestas r WHERE r.alerta_id = a.id AND r.estado = 'bien')  AS bien,
+          (SELECT COUNT(*) FROM respuestas r WHERE r.alerta_id = a.id AND r.estado = 'ayuda') AS ayuda
+        FROM alertas a ${donde} ORDER BY a.id DESC LIMIT ? OFFSET ?`).all(...params, limite, desplazamiento);
+      return { total, items };
+    }
+    if (f.desde) { cond.push('e.fecha >= ?'); params.push(f.desde); }
+    if (f.hasta) { cond.push('e.fecha < ?'); params.push(f.hasta); }
+    if (f.ciudad) { cond.push('d.ciudad = ?'); params.push(f.ciudad); }
+    if (f.min != null) { cond.push('e.pga >= ?'); params.push(f.min); }
+    const donde = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+    const desde = 'FROM eventos e JOIN dispositivos d ON d.id = e.dispositivo_id';
+    const total = db.prepare(`SELECT COUNT(*) AS n ${desde} ${donde}`).get(...params).n;
+    const items = db.prepare(`
+      SELECT e.id, e.dispositivo_id, d.nombre, d.ciudad, e.fecha, e.pga ${desde} ${donde}
+      ORDER BY e.id DESC LIMIT ? OFFSET ?`).all(...params, limite, desplazamiento);
+    return { total, items };
+  }
 
   return {
     // dispositivos
@@ -215,6 +266,14 @@ function abrirBaseDatos(ruta) {
     guardarRespuesta: (alertaId, clienteId, estado) => q.guardarRespuesta.run(alertaId, clienteId, estado, new Date().toISOString()),
     respuestaDeCliente: (alertaId, clienteId) => q.respuestaDeCliente.get(alertaId, clienteId)?.estado ?? null,
     conteoRespuestas: (alertaId) => { const r = q.conteoRespuestas.get(alertaId); return { bien: r.bien || 0, ayuda: r.ayuda || 0 }; },
+    // gestión desde el panel
+    historial,
+    ciudades: () => q.ciudades.all().map((r) => r.ciudad),
+    clientesResumen: () => q.clientesResumen.all(),
+    desvincularDispositivo: (id) => q.desvincular.run(id).changes === 1,
+    solicitudesAyuda: (n = 50) => q.solicitudesAyuda.all(n),
+    atenderSolicitud: (id, usuario) => q.atenderSolicitud.run(usuario, new Date().toISOString(), id).changes === 1,
+    pendientesAyuda: () => q.pendientesAyuda.get().n,
     cerrar: () => db.close(),
   };
 }

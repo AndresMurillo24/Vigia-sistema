@@ -172,6 +172,7 @@ async function verificarSesion() {
   $('nombreUsuario').textContent = usuarioActual.nombre;
   $('rolUsuario').textContent = usuarioActual.rol === 'admin' ? 'Administrador' : 'Operador';
   document.body.hidden = false;
+  document.dispatchEvent(new CustomEvent('vigia:sesion', { detail: usuarioActual }));
   return usuarioActual;
 }
 
@@ -214,6 +215,8 @@ function conectar() {
   };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
+    // Las demás secciones del panel (gestion.js) también escuchan los mensajes en vivo.
+    document.dispatchEvent(new CustomEvent('vigia:mensaje', { detail: msg }));
     switch (msg.tipo) {
       case 'lecturas': {
         const enviados = new Set();
