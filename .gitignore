@@ -1,5 +1,5 @@
 node_modules/
-datos/*.db
-datos/*.db-*
+# Base de datos local y certificado HTTPS: nunca se suben al repositorio
+datos/
 .env
 .DS_Store
