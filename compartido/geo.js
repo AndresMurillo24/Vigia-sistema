@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  compartido/geo.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Compartido
+ * Qué hace: Calcula la distancia en km entre dos coordenadas (fórmula de Haversine). Lo usan el
+ *           servidor y el simulador.
+ */
 'use strict';
 
 const RADIO_TIERRA_KM = 6371;

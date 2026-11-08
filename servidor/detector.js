@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/detector.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend
+ * Qué hace: Detector de sismos: solo declara una alerta cuando varios dispositivos cercanos
+ *           coinciden en pocos segundos.
+ */
 'use strict';
 
 const { EventEmitter } = require('node:events');

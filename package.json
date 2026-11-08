@@ -1,6 +1,6 @@
 {
   "name": "vigia-sistema",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Plataforma de alerta sísmica temprana Vigía: simulador de dispositivos, servidor central y panel de monitoreo.",
   "license": "MIT",
@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning inicio.js",
+    "start:https": "node --disable-warning=ExperimentalWarning inicio.js --https",
     "servidor": "node --disable-warning=ExperimentalWarning servidor/index.js",
     "simulador": "node simulador/index.js",
     "test": "node --disable-warning=ExperimentalWarning --test",
@@ -17,6 +18,12 @@
   "dependencies": {
     "chart.js": "^4.6.1",
     "express": "^4.22.3",
+    "selfsigned": "^2.4.1",
     "ws": "^8.22.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndresMurillo24/Vigia-sistema.git"
+  },
+  "author": "Daniel Andrés Márquez, Andrés David Murillo, Andrés Julián Vargas"
 }

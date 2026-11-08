@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/validacion.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend · seguridad
+ * Qué hace: Valida todo lo que entra al sistema con lista blanca y rangos permitidos.
+ */
 'use strict';
 
 // Ningún acelerómetro doméstico mide más de ±16 g: cualquier valor mayor es un error o un ataque.
@@ -27,7 +34,9 @@ function validarMensajeDispositivo(m) {
 
     case 'evento':
       if (!esNumero(m.pga) || m.pga <= 0 || m.pga > LIMITE_G) return fallo('pga fuera de rango');
-      return ok({ tipo: 'evento', pga: m.pga });
+      // t: momento de la detección. Un evento guardado sin conexión llega después con su hora real.
+      if (m.t !== undefined && (!Number.isInteger(m.t) || m.t > Date.now() + 5000 || Date.now() - m.t > 86_400_000)) return fallo('t fuera de rango');
+      return ok({ tipo: 'evento', pga: m.pga, t: m.t ?? Date.now() });
 
     case 'estado': // reporte periódico de batería (%) y señal WiFi (dBm)
       if (!Number.isInteger(m.bateria) || m.bateria < 0 || m.bateria > 100) return fallo('bateria fuera de rango');
@@ -112,7 +121,42 @@ function validarRespuesta(b) {
   return ok({ alertaId: b.alertaId, estado: b.estado });
 }
 
+/* ---------- filtros del historial (RF04) ---------- */
+const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+/** Convierte una fecha local de Colombia (UTC−5) al instante UTC en que empieza ese día. */
+const inicioDelDia = (f, dias = 0) => {
+  const d = new Date(`${f}T00:00:00-05:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString();
+};
+
+function validarFiltros(q) {
+  const tipo = q.tipo === undefined || q.tipo === '' ? 'eventos' : q.tipo;
+  if (tipo !== 'eventos' && tipo !== 'alertas') return fallo('El tipo debe ser «eventos» o «alertas»');
+  const f = {};
+  for (const [campo, dias] of [['desde', 0], ['hasta', 1]]) {
+    if (q[campo] === undefined || q[campo] === '') continue;
+    if (typeof q[campo] !== 'string' || !FECHA.test(q[campo]) || !inicioDelDia(q[campo])) return fallo(`La fecha «${campo}» debe tener la forma AAAA-MM-DD`);
+    f[campo] = inicioDelDia(q[campo], dias); // «hasta» incluye todo ese día
+  }
+  if (f.desde && f.hasta && f.desde >= f.hasta) return fallo('La fecha inicial debe ser anterior a la final');
+  if (q.ciudad !== undefined && q.ciudad !== '') {
+    if (typeof q.ciudad !== 'string' || q.ciudad.length > 40) return fallo('Ciudad inválida');
+    f.ciudad = q.ciudad;
+  }
+  if (q.min !== undefined && q.min !== '') {
+    const min = Number(q.min);
+    if (!Number.isFinite(min) || min < 0 || min > LIMITE_G) return fallo('La aceleración mínima debe estar entre 0 y 16 g');
+    f.min = min;
+  }
+  const pagina = q.pagina === undefined || q.pagina === '' ? 1 : Number(q.pagina);
+  if (!Number.isInteger(pagina) || pagina < 1 || pagina > 10_000) return fallo('Página inválida');
+  return ok({ tipo, filtros: f, pagina });
+}
+
 module.exports = {
+  validarFiltros,
   validarMensajeDispositivo, validarSimulacion, validarLogin, LIMITE_G,
   validarRegistro, validarLoginCliente, validarCodigo, validarAjustes, validarContacto, validarRespuesta, UMBRAL_MIN, UMBRAL_MAX,
 };

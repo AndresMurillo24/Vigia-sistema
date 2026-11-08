@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/cliente.test.js
+ * Tipo:     JavaScript (pruebas · node:test)
+ * Capa:     Pruebas
+ * Qué hace: Pruebas de la app del cliente: registro, vinculación, IDOR, sensibilidad, prueba de
+ *           alarma, contactos y alertas.
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

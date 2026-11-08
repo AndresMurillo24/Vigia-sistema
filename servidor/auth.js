@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/auth.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend · seguridad
+ * Qué hace: Inicio de sesión del panel y de los clientes: sesiones con cookie segura, bloqueo por
+ *           intentos fallidos y roles.
+ */
 'use strict';
 
 const { hashClave, verificarClave, generarToken, hashToken } = require('./seguridad');

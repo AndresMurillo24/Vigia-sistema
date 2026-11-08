@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/auth.test.js
+ * Tipo:     JavaScript (pruebas · node:test)
+ * Capa:     Pruebas
+ * Qué hace: Pruebas del inicio de sesión: contraseñas, cookies, roles y bloqueo por intentos.
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');

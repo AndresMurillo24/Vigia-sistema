@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/seguridad.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de backend · seguridad
+ * Qué hace: Hash de tokens (SHA-256) y de contraseñas (scrypt con sal) y generación de tokens
+ *           aleatorios.
+ */
 'use strict';
 
 const crypto = require('node:crypto');

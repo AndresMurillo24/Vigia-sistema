@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/cliente/cliente.js
+ * Tipo:     JavaScript (navegador)
+ * Capa:     Capa de presentación · app del cliente
+ * Qué hace: Lógica de la app: cuenta, vinculación, estado en vivo, alerta con «Estoy bien»,
+ *           historial, sensibilidad y contactos.
+ */
 'use strict';
 
 /* ============================ utilidades ============================ */
@@ -356,6 +364,13 @@ function conectar() {
         renderHistorial();
         abrirAlerta(m.alerta);
         break;
+      case 'desvinculado': { // la empresa desvinculó el dispositivo (por ejemplo, venta de la casa)
+        const d = app.dispositivos.get(m.id);
+        app.dispositivos.delete(m.id);
+        toast(`${d ? d.nombre : 'Un dispositivo'} ya no está vinculado a tu cuenta.`);
+        if (!app.dispositivos.size) { $('bVolver').hidden = true; mostrar('pVincular'); } else renderTodo();
+        break;
+      }
       case 'prueba_ok': {
         const d = app.dispositivos.get(m.id);
         toast(`La alarma de ${d ? d.nombre : 'tu dispositivo'} sonó correctamente.`);

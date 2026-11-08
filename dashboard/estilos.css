@@ -1,3 +1,10 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  dashboard/estilos.css
+ * Tipo:     CSS
+ * Capa:     Capa de presentación · panel de la empresa
+ * Qué hace: Estilos del panel y de su inicio de sesión, con modo claro y oscuro.
+ */
 :root {
   --fondo: #eef2f0; --tarjeta: #ffffff; --tinta: #11231f; --tenue: #56686a; --linea: rgba(17, 35, 31, .12);
   --teal: #1b7867; --teal-suave: rgba(27, 120, 103, .12); --coral: #cf4d27; --coral-suave: rgba(207, 77, 39, .12);
@@ -99,6 +106,35 @@ main.login { grid-template-columns: 1fr; margin: 0; max-width: none; width: min(
 .login input:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px var(--teal-suave); }
 .login .error { color: var(--coral); min-height: 1.3em; font-size: 13px; }
 .login .boton { width: 100%; padding: 12px; background: var(--teal); }
+
+/* ---------- secciones del panel ---------- */
+.vistas { display: flex; gap: 4px; padding: 8px 24px 0; background: var(--tarjeta); border-bottom: 1px solid var(--linea); overflow-x: auto; }
+.vistas button { font: 600 14px var(--sans); color: var(--tenue); background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer; white-space: nowrap; display: inline-flex; gap: 8px; align-items: center; }
+.vistas button[aria-current] { color: var(--teal); border-bottom-color: var(--teal); }
+.contador { font: 700 12px var(--mono); background: var(--coral); color: #fff; border-radius: 999px; padding: 1px 8px; }
+main.vista { display: block; }
+main.vista > .tarjeta + .tarjeta { margin-top: 16px; }
+.filtros { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; }
+.filtros .botones { grid-column: 1 / -1; display: flex; gap: 10px; }
+.filtros input, .filtros select { font: inherit; color: var(--tinta); background: var(--fondo); border: 1px solid var(--linea); border-radius: 10px; padding: 8px; width: 100%; }
+.filtros select:disabled { opacity: .5; }
+.boton.secundario { background: var(--teal-suave); color: var(--teal); text-decoration: none; display: inline-flex; align-items: center; }
+.desplazable { overflow-x: auto; margin-top: 8px; }
+td small { display: block; color: var(--tenue); font-size: 12px; }
+.tenue { color: var(--tenue); }
+td.bajo { color: var(--coral); font-weight: 700; }
+.paginas { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; font: 600 13px var(--mono); color: var(--tenue); }
+.paginas button:disabled { opacity: .4; cursor: default; }
+.solicitudes { display: grid; gap: 12px; }
+.solicitud { border: 1px solid var(--linea); border-left: 5px solid var(--coral); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.solicitud.atendida { border-left-color: var(--ok); opacity: .85; }
+.solicitud header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.solicitud h3 { margin: 0; font-size: 16px; } .solicitud h4 { margin: 0 0 4px; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--tenue); }
+.solicitud header p, .solicitud .cols p { margin: 0; font-size: 13.5px; }
+.solicitud .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.solicitud .boton { justify-self: start; }
+.solicitud a { color: var(--teal); font-weight: 600; }
+@media (max-width: 900px) { .filtros { grid-template-columns: 1fr 1fr; } .solicitud .cols { grid-template-columns: 1fr; } .vistas { padding: 4px 12px 0; } }
 
 :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 

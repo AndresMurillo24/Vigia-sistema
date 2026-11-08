@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  servidor/semilla.js
+ * Tipo:     JavaScript (Node.js)
+ * Capa:     Capa de datos
+ * Qué hace: Registra en la base de datos los 12 dispositivos simulados (tokens y códigos guardados
+ *           como hash).
+ */
 'use strict';
 
 const { hashToken } = require('./seguridad');

@@ -1,3 +1,11 @@
+/*
+ * Proyecto: Vigía · Sistema de alerta sísmica temprana
+ * Archivo:  tests/ayuda.js
+ * Tipo:     JavaScript (pruebas)
+ * Capa:     Pruebas
+ * Qué hace: Funciones compartidas por las pruebas: levantar un servidor de prueba, iniciar sesión
+ *           y conectar dispositivos.
+ */
 'use strict';
 // Utilidades compartidas por las pruebas de integración.
 const WebSocket = require('ws');
