@@ -10,7 +10,7 @@
 
 const { WebSocketServer, WebSocket } = require('ws');
 const { crearAutenticacion } = require('./auth');
-const { hashClave, hashToken } = require('./seguridad');
+const { hashClave, hashToken, verificarClave } = require('./seguridad');
 const { distanciaKm } = require('../compartido/geo');
 const v = require('./validacion');
 
@@ -32,6 +32,8 @@ function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, 
     almacen: { buscar: db.buscarCliente, crearSesion: db.crearSesionCliente, buscarSesion: db.buscarSesionCliente, borrarSesion: db.borrarSesionCliente },
     validar: v.validarLoginCliente,
     publico: (c) => ({ nombre: c.nombre, correo: c.correo }),
+    // En la bitácora del panel quedan los intentos fallidos y bloqueos de la app (seguridad).
+    auditar: (a) => { if (a.accion !== 'login') db.auditar({ ...a, detalle: `App Mi Vigía · ${a.detalle}` }); },
   });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
   const intentosCodigo = new Map(); // clienteId -> { n, desde }
@@ -89,8 +91,42 @@ function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, 
       contactos: db.listarContactos(id),
       eventos: db.eventosDeCliente(id, 30),
       alertas: db.ultimasAlertas(10).map((a) => alertaParaCliente(a, id)),
+      comunicados: db.comunicadosDeCliente(id, 30),
+      plan: { kit: [], encuentro: '', encuentroAlterno: '', notas: '', ...db.obtenerPlan(id) },
+      kit: v.KIT,
       limites: { umbralMin: v.UMBRAL_MIN, umbralMax: v.UMBRAL_MAX },
     });
+  });
+
+  /* ---------- cambiar la contraseña ---------- */
+  app.post('/api/cliente/clave', auth.requerir(), (req, res) => {
+    const r = v.validarCambioClave(req.body);
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    const c = db.clientePorId(req.cuenta.id);
+    if (!verificarClave(r.datos.actual, c.clave_hash)) return res.status(403).json({ error: 'La contraseña actual no es correcta' });
+    db.cambiarClaveCliente(c.id, hashClave(r.datos.nueva));
+    db.borrarOtrasSesionesCliente(c.id, req.cuenta.tokenHash); // cierra la sesión en los otros celulares
+    log(`[CLIENTE] ${c.correo} cambió su contraseña`);
+    res.json({ ok: true });
+  });
+
+  /* ---------- plan de emergencia del hogar ---------- */
+  app.put('/api/cliente/plan', auth.requerir(), (req, res) => {
+    const r = v.validarPlan(req.body);
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    db.guardarPlan(req.cuenta.id, r.datos);
+    res.json({ plan: r.datos });
+  });
+
+  /* ---------- avisos de la empresa ---------- */
+  app.post('/api/cliente/comunicados/:id/leido', auth.requerir(), (req, res) => {
+    const id = Number(req.params.id);
+    // Solo se puede marcar un aviso que le corresponde (por su ciudad o general).
+    if (!Number.isInteger(id) || !db.comunicadosDeCliente(req.cuenta.id, 200).some((c) => c.id === id)) {
+      return res.status(404).json({ error: 'Aviso no encontrado' });
+    }
+    db.marcarLeido(id, req.cuenta.id);
+    res.json({ ok: true });
   });
 
   /* ---------- vincular un dispositivo con el código de la caja ---------- */
@@ -179,6 +215,10 @@ function crearPortalCliente({ app, db, config, log, estado, enviarADispositivo, 
     alDispositivo: (e) => { if (e.d.cliente_id) enviarCliente(e.d.cliente_id, { tipo: 'dispositivo', dispositivo: vista(e) }); },
     alEvento: (e, evento) => { if (e.d.cliente_id) enviarCliente(e.d.cliente_id, { tipo: 'evento', evento, dispositivo: vista(e) }); },
     alDesvincular: (clienteId, dispositivoId) => enviarCliente(clienteId, { tipo: 'desvinculado', id: dispositivoId }),
+    alComunicado: (c, clientes) => {
+      const comunicado = { id: c.id, fecha: c.fecha, tipo: c.tipo, titulo: c.titulo, mensaje: c.mensaje, ciudad: c.ciudad, leido: false };
+      for (const id of clientes) enviarCliente(id, { tipo: 'comunicado', comunicado });
+    },
     alPrueba: (e) => { if (e.d.cliente_id) enviarCliente(e.d.cliente_id, { tipo: 'prueba_ok', id: e.d.id }); },
     alAlerta: (a) => {
       const clientes = new Set([...wss.clients].map((ws) => ws.clienteId));

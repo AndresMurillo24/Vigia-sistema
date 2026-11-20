@@ -121,6 +121,83 @@ function validarRespuesta(b) {
   return ok({ alertaId: b.alertaId, estado: b.estado });
 }
 
+/* ---------- administración del panel ---------- */
+const USUARIO = /^[a-z0-9._-]{3,40}$/;
+const ROLES = ['admin', 'operador'];
+
+/** Contraseña nueva: mínimo 8 caracteres, con al menos una letra y un número. */
+function claveSegura(c) {
+  return typeof c === 'string' && c.length >= 8 && c.length <= 200 && /[a-zñ]/i.test(c) && /\d/.test(c);
+}
+const MSG_CLAVE = 'La contraseña debe tener al menos 8 caracteres, con letras y números';
+
+function validarUsuarioNuevo(b) {
+  if (!b || typeof b !== 'object') return fallo('Cuerpo inválido');
+  const usuario = typeof b.usuario === 'string' ? b.usuario.trim().toLowerCase() : '';
+  if (!USUARIO.test(usuario)) return fallo('El usuario debe tener entre 3 y 40 letras, números, puntos o guiones');
+  if (!texto(b.nombre, 2, 60)) return fallo('Escribe el nombre completo (entre 2 y 60 caracteres)');
+  if (!ROLES.includes(b.rol)) return fallo('El rol debe ser «admin» u «operador»');
+  if (!claveSegura(b.clave)) return fallo(MSG_CLAVE);
+  return ok({ usuario, nombre: b.nombre.trim(), rol: b.rol, clave: b.clave });
+}
+
+/** Cambios a un usuario existente: cualquiera de nombre, rol o contraseña. */
+function validarCambioUsuario(b) {
+  if (!b || typeof b !== 'object') return fallo('Cuerpo inválido');
+  const d = {};
+  if (b.nombre !== undefined) { if (!texto(b.nombre, 2, 60)) return fallo('Escribe el nombre completo (entre 2 y 60 caracteres)'); d.nombre = b.nombre.trim(); }
+  if (b.rol !== undefined) { if (!ROLES.includes(b.rol)) return fallo('El rol debe ser «admin» u «operador»'); d.rol = b.rol; }
+  if (b.clave !== undefined) { if (!claveSegura(b.clave)) return fallo(MSG_CLAVE); d.clave = b.clave; }
+  if (!Object.keys(d).length) return fallo('No hay cambios');
+  return ok(d);
+}
+
+/** Cambio de la propia contraseña (panel o app): exige la actual. */
+function validarCambioClave(b) {
+  if (!b || typeof b !== 'object' || typeof b.actual !== 'string' || b.actual.length > 200) return fallo('Escribe tu contraseña actual');
+  if (!claveSegura(b.nueva)) return fallo(MSG_CLAVE);
+  if (b.nueva === b.actual) return fallo('La contraseña nueva debe ser distinta a la actual');
+  return ok({ actual: b.actual, nueva: b.nueva });
+}
+
+const TIPOS_COMUNICADO = ['informativo', 'mantenimiento', 'simulacro'];
+function validarComunicado(b) {
+  if (!b || typeof b !== 'object') return fallo('Cuerpo inválido');
+  if (!TIPOS_COMUNICADO.includes(b.tipo)) return fallo('Tipo de comunicado inválido');
+  if (!texto(b.titulo, 3, 80)) return fallo('El título debe tener entre 3 y 80 caracteres');
+  if (!texto(b.mensaje, 3, 600)) return fallo('El mensaje debe tener entre 3 y 600 caracteres');
+  let ciudad = null;
+  if (b.ciudad !== undefined && b.ciudad !== null && b.ciudad !== '') {
+    if (typeof b.ciudad !== 'string' || b.ciudad.length > 40) return fallo('Ciudad inválida');
+    ciudad = b.ciudad;
+  }
+  return ok({ tipo: b.tipo, titulo: b.titulo.trim(), mensaje: b.mensaje.trim(), ciudad });
+}
+
+const FILTRO_AUDITORIA = /^[a-z_]{2,30}$/;
+function validarFiltroAuditoria(q) {
+  const f = {};
+  if (q.accion) { if (typeof q.accion !== 'string' || !FILTRO_AUDITORIA.test(q.accion)) return fallo('Acción inválida'); f.accion = q.accion; }
+  if (q.usuario) { if (typeof q.usuario !== 'string' || q.usuario.length > 120) return fallo('Usuario inválido'); f.usuario = q.usuario.toLowerCase(); }
+  const pagina = q.pagina === undefined || q.pagina === '' ? 1 : Number(q.pagina);
+  if (!Number.isInteger(pagina) || pagina < 1 || pagina > 10_000) return fallo('Página inválida');
+  return ok({ filtros: f, pagina });
+}
+
+/* ---------- plan de emergencia del hogar ---------- */
+const KIT = ['agua', 'comida', 'linterna', 'radio', 'botiquin', 'medicamentos', 'documentos', 'pito', 'baterias', 'abrigo', 'efectivo', 'cargador'];
+function validarPlan(b) {
+  if (!b || typeof b !== 'object') return fallo('Cuerpo inválido');
+  if (!Array.isArray(b.kit) || b.kit.length > KIT.length || !b.kit.every((k) => KIT.includes(k))) return fallo('Elementos del kit inválidos');
+  const campos = {};
+  for (const [k, max] of [['encuentro', 120], ['encuentroAlterno', 120], ['notas', 300]]) {
+    const v = b[k] ?? '';
+    if (typeof v !== 'string' || v.trim().length > max) return fallo(`El campo «${k}» es demasiado largo`);
+    campos[k] = v.trim();
+  }
+  return ok({ kit: [...new Set(b.kit)], ...campos });
+}
+
 /* ---------- filtros del historial (RF04) ---------- */
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 /** Convierte una fecha local de Colombia (UTC−5) al instante UTC en que empieza ese día. */
@@ -156,7 +233,8 @@ function validarFiltros(q) {
 }
 
 module.exports = {
-  validarFiltros,
+  validarFiltros, validarUsuarioNuevo, validarCambioUsuario, validarCambioClave, validarComunicado, validarFiltroAuditoria,
+  validarPlan, KIT, claveSegura,
   validarMensajeDispositivo, validarSimulacion, validarLogin, LIMITE_G,
   validarRegistro, validarLoginCliente, validarCodigo, validarAjustes, validarContacto, validarRespuesta, UMBRAL_MIN, UMBRAL_MAX,
 };

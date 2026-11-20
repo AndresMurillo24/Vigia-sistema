@@ -23,7 +23,7 @@ function celdaCSV(valor) {
   return /[",;\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function montarGestion({ app, db, auth, estado, avisarPanel, portal, log }) {
+function montarGestion({ app, db, auth, estado, avisarPanel, portal, log, auditar = () => {} }) {
   /* ---------- historial consultable (RF04) ---------- */
   app.get('/api/historial', auth.requerir(), (req, res) => {
     const v = validarFiltros(req.query);
@@ -74,6 +74,7 @@ function montarGestion({ app, db, auth, estado, avisarPanel, portal, log }) {
     portal.alDesvincular(anterior, e.d.id);
     // El dispositivo vuelve al umbral recomendado.
     if (e.socket) e.socket.send(JSON.stringify({ tipo: 'config', umbral: e.d.umbral }));
+    auditar(req, 'desvincular', e.d.nombre);
     log(`[GESTIÓN] ${req.cuenta.usuario} desvinculó ${e.d.nombre}`);
     res.json({ ok: true });
   });
@@ -95,6 +96,7 @@ function montarGestion({ app, db, auth, estado, avisarPanel, portal, log }) {
     if (!Number.isInteger(id) || !db.atenderSolicitud(id, req.cuenta.usuario)) {
       return res.status(404).json({ error: 'Solicitud no encontrada o ya atendida' });
     }
+    auditar(req, 'atender_ayuda', `Solicitud #${id}`);
     log(`[AYUDA] ${req.cuenta.usuario} atendió la solicitud ${id}`);
     avisarPanel({ tipo: 'solicitudes', pendientes: db.pendientesAyuda() });
     res.json({ ok: true });

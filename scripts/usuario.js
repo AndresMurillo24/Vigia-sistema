@@ -3,7 +3,8 @@
  * Archivo:  scripts/usuario.js
  * Tipo:     JavaScript (Node.js)
  * Capa:     Herramientas
- * Qué hace: Herramienta de consola para crear usuarios del panel o cambiar su contraseña.
+ * Qué hace: Herramienta de consola para crear usuarios del panel o cambiar su contraseña
+ *           (también se puede hacer desde la sección Usuarios del panel).
  */
 'use strict';
 
@@ -18,6 +19,7 @@ const readline = require('node:readline/promises');
 const config = require('../servidor/config');
 const { abrirBaseDatos } = require('../servidor/db');
 const { hashClave } = require('../servidor/seguridad');
+const { claveSegura } = require('../servidor/validacion');
 
 async function main() {
   const [usuario, rol = 'operador', nombre] = process.argv.slice(2);
@@ -26,10 +28,10 @@ async function main() {
     process.exit(1);
   }
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const clave = await rl.question('Contraseña (mínimo 8 caracteres): ');
+  const clave = await rl.question('Contraseña (mínimo 8 caracteres, con letras y números): ');
   const repetida = await rl.question('Repite la contraseña: ');
   rl.close();
-  if (clave.length < 8) return console.log('La contraseña debe tener al menos 8 caracteres.');
+  if (!claveSegura(clave)) return console.log('La contraseña debe tener al menos 8 caracteres, con letras y números.');
   if (clave !== repetida) return console.log('Las contraseñas no coinciden.');
 
   const db = abrirBaseDatos(config.RUTA_DB);

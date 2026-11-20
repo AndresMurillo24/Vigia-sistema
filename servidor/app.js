@@ -19,6 +19,7 @@ const { verificarToken } = require('./seguridad');
 const { autenticacionPanel } = require('./auth');
 const { crearPortalCliente } = require('./portal-cliente');
 const { montarGestion } = require('./gestion');
+const { montarAdministracion } = require('./administracion');
 
 const INTERVALO_LECTURAS_MS = 200; // cada cuánto se envían las lecturas agrupadas a las pantallas
 const TIEMPO_AUTENTICACION_MS = 5000;
@@ -29,6 +30,8 @@ const TIEMPO_AUTENTICACION_MS = 5000;
  */
 function crearServidor({ db, config, log = console.log, tls = null }) {
   const auth = autenticacionPanel({ db, config, log });
+  /** Registra en la bitácora de auditoría una acción hecha desde el panel. */
+  const auditar = (req, accion, detalle = '') => db.auditar({ usuario: req.cuenta.usuario, accion, detalle, ip: req.ip || '' });
 
   /* ---------- estado en memoria de cada dispositivo ---------- */
   const estado = new Map();
@@ -37,7 +40,7 @@ function crearServidor({ db, config, log = console.log, tls = null }) {
   }
   const resumen = (e) => ({
     id: e.d.id, nombre: e.d.nombre, ciudad: e.d.ciudad, lat: e.d.lat, lon: e.d.lon,
-    enLinea: e.enLinea, enAlerta: Date.now() < e.alertaHasta, cliente: !!e.d.cliente_id,
+    enLinea: e.enLinea, enAlerta: Date.now() < e.alertaHasta, cliente: !!e.d.cliente_id, umbral: e.d.umbral ?? config.UMBRAL_G,
   });
 
   /* ---------- HTTP ---------- */
@@ -110,6 +113,7 @@ function crearServidor({ db, config, log = console.log, tls = null }) {
   app.post('/api/login', auth.login);
   app.post('/api/logout', (req, res) => {
     const u = auth.logout(req, res);
+    if (u) db.auditar({ usuario: u.usuario, accion: 'logout', detalle: 'Cerró sesión', ip: req.ip || '' });
     if (u) for (const ws of wssPanel.clients) if (ws.tokenHash === u.tokenHash) ws.close(4401, 'Sesión cerrada');
   });
   app.get('/api/sesion', auth.requerir(), (req, res) => {
@@ -131,12 +135,19 @@ function crearServidor({ db, config, log = console.log, tls = null }) {
     if (!v.ok) return res.status(400).json({ error: v.error });
     const orden = { tipo: 'simular_sismo', ...v.datos, inicio: Date.now() };
     const enviados = difundir(wssDispositivos, orden);
+    auditar(req, 'simulacion', `M${v.datos.magnitud} en (${v.datos.lat}, ${v.datos.lon}) · ${enviados} dispositivos`);
     log(`[SIMULACIÓN] ${req.cuenta.usuario} envió un sismo M${v.datos.magnitud} en (${v.datos.lat}, ${v.datos.lon}) a ${enviados} dispositivos`);
     res.status(202).json({ enviados });
   });
 
   /* ---------- gestión: historial, red y solicitudes de ayuda ---------- */
-  const gestion = montarGestion({ app, db, auth, estado, portal, log, avisarPanel: (m) => difundir(wssPanel, m) });
+  const gestion = montarGestion({ app, db, auth, estado, portal, log, auditar, avisarPanel: (m) => difundir(wssPanel, m) });
+
+  /* ---------- administración: usuarios, bitácora, estadísticas y comunicados ---------- */
+  montarAdministracion({
+    app, db, auth, estado, portal, log, auditar, enviarADispositivo,
+    cerrarSesionesPanel: (usuarioId) => { for (const ws of wssPanel.clients) if (ws.usuarioId === usuarioId) ws.close(4401, 'Sesión cerrada'); },
+  });
 
   app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'JSON inválido' });
@@ -158,7 +169,7 @@ function crearServidor({ db, config, log = console.log, tls = null }) {
         socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
         return socket.destroy();
       }
-      return wssPanel.handleUpgrade(req, socket, head, (ws) => { ws.tokenHash = usuario.tokenHash; });
+      return wssPanel.handleUpgrade(req, socket, head, (ws) => { ws.tokenHash = usuario.tokenHash; ws.usuarioId = usuario.id; });
     }
     socket.destroy();
   });
@@ -206,7 +217,10 @@ function crearServidor({ db, config, log = console.log, tls = null }) {
           e.wifi = m.wifi;
           portal.alDispositivo(e);
           break;
-        case 'prueba_ok': portal.alPrueba(e); break;
+        case 'prueba_ok':
+          portal.alPrueba(e);
+          difundir(wssPanel, { tipo: 'prueba_ok', id: e.d.id, nombre: e.d.nombre });
+          break;
       }
     });
 

@@ -36,8 +36,10 @@ function leerCookie(req, nombre) {
  * @param {object} o.almacen     { buscar(id), crearSesion(hash, cuentaId, expira), buscarSesion(hash, ahora), borrarSesion(hash) }
  * @param {Function} o.validar   valida el cuerpo y devuelve { ok, datos: { id, clave } }
  * @param {Function} o.publico   datos de la cuenta que se pueden enviar al navegador
+ * @param {Function} [o.auditar] registra en la bitácora los ingresos, fallos y bloqueos
+ * @param {Function} [o.alIngresar] se llama con la cuenta cada vez que inicia sesión
  */
-function crearAutenticacion({ config, log = console.log, ahora = Date.now, cookie, campo, almacen, validar, publico }) {
+function crearAutenticacion({ config, log = console.log, ahora = Date.now, cookie, campo, almacen, validar, publico, auditar = () => {}, alIngresar = () => {} }) {
   const intentos = new Map(); // ip -> { fallos, bloqueadoHasta }
 
   function cuentaDeRequest(req) {
@@ -70,13 +72,16 @@ function crearAutenticacion({ config, log = console.log, ahora = Date.now, cooki
     const v = validar(req.body);
     const cuenta = v.ok ? almacen.buscar(v.datos.id) : null;
     const correcto = verificarClave(v.ok ? v.datos.clave : '', cuenta ? cuenta.clave_hash : HASH_RELLENO) && !!cuenta;
+    const quien = v.ok ? v.datos.id : '(inválido)';
 
     if (!correcto) {
       registro.fallos++;
+      auditar({ usuario: quien, accion: 'login_fallido', detalle: `Intento ${registro.fallos} de ${config.INTENTOS_MAXIMOS}`, ip });
       if (registro.fallos >= config.INTENTOS_MAXIMOS) {
         registro.bloqueadoHasta = ahora() + config.BLOQUEO_MS;
         registro.fallos = 0;
         log(`[SEGURIDAD] IP ${ip} bloqueada por ${config.INTENTOS_MAXIMOS} intentos fallidos (${campo})`);
+        auditar({ usuario: quien, accion: 'bloqueo', detalle: `IP bloqueada ${Math.round(config.BLOQUEO_MS / 60_000)} min`, ip });
       }
       intentos.set(ip, registro);
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
@@ -84,6 +89,8 @@ function crearAutenticacion({ config, log = console.log, ahora = Date.now, cooki
 
     intentos.delete(ip);
     abrirSesion(req, res, cuenta);
+    alIngresar(cuenta);
+    auditar({ usuario: quien, accion: 'login', detalle: 'Inicio de sesión correcto', ip });
     log(`[SESIÓN] ${v.datos.id} inició sesión (${campo})`);
     res.json({ [campo]: publico(cuenta) });
   }
@@ -117,6 +124,8 @@ function autenticacionPanel({ db, config, log, ahora }) {
     almacen: { buscar: db.buscarUsuario, crearSesion: db.crearSesion, buscarSesion: db.buscarSesion, borrarSesion: db.borrarSesion },
     validar: (b) => { const v = validarLogin(b); return v.ok ? { ok: true, datos: { id: v.datos.usuario, clave: v.datos.clave } } : v; },
     publico: (u) => ({ usuario: u.usuario, nombre: u.nombre, rol: u.rol }),
+    auditar: (a) => db.auditar(a),
+    alIngresar: (u) => db.marcarAcceso(u.id),
   });
 }
 
