@@ -2,7 +2,7 @@
 
 ![Pruebas](https://github.com/AndresMurillo24/Vigia-sistema/actions/workflows/pruebas.yml/badge.svg)
 
-Proyecto de la materia **Construcción de Software** · versión **1.0.0**.
+Proyecto de la materia **Construcción de Software** · versión **2.0.0** (versión final).
 
 Vigía es un dispositivo para el hogar que detecta sismos con un acelerómetro, hace sonar una alarma y avisa a una plataforma central que alerta a toda la red. Como todavía no tenemos el hardware, este repositorio contiene el **sistema completo en software**:
 
@@ -12,7 +12,7 @@ Vigía es un dispositivo para el hogar que detecta sismos con un acelerómetro, 
 | Plataforma central | `servidor/` | — | Recibe los datos por WebSocket, confirma si hay un sismo real, guarda todo en SQLite y avisa a toda la red. |
 | Panel de la empresa | `dashboard/` | Admin y operadores | Monitoreo en vivo, historial con filtros, dispositivos y clientes, solicitudes de ayuda y simulación de sismos. |
 | App del cliente «Mi Vigía» | `dashboard/cliente/` | Cada hogar | Estado de su dispositivo, alerta de sismo con «Estoy bien», historial, sensibilidad y contactos de emergencia. |
-| Pruebas | `tests/` | — | 44 pruebas automáticas que se ejecutan en GitHub con cada cambio. |
+| Pruebas | `tests/` | — | 53 pruebas automáticas que se ejecutan en GitHub con cada cambio. |
 
 La relación entre cada requerimiento del documento del proyecto, el código que lo cumple y la prueba que lo verifica está en **[docs/trazabilidad.md](docs/trazabilidad.md)**.
 
@@ -79,7 +79,7 @@ Todo queda guardado en la carpeta `datos/` (base de datos SQLite): al volver a e
 | `npm run start:https` | Lo mismo, pero **cifrado con HTTPS y WSS** en https://localhost:3443 (ver *Seguridad*). |
 | `npm run servidor` | Solo la plataforma central. |
 | `npm run simulador` | Solo los dispositivos, en otra terminal. Acepta el comando `sismo` (ver *Disponibilidad*). |
-| `npm test` | Ejecuta las 44 pruebas automáticas. |
+| `npm test` | Ejecuta las 53 pruebas automáticas. |
 | `npm run usuario -- <usuario> <admin\|operador> "<Nombre>"` | Crea un usuario del panel o cambia su contraseña. |
 
 Para usar otro puerto: `PUERTO=4000 npm start` (en PowerShell: `$env:PUERTO=4000; npm start`).
@@ -87,35 +87,48 @@ Para fijar la contraseña inicial del admin: `ADMIN_CLAVE=tu-clave npm start` (s
 
 ## Panel de la empresa
 
+Diseño de centro de control con menú lateral, tema claro y oscuro (se recuerda por navegador), notificaciones en pantalla, sonido de alerta (se puede silenciar), reloj de Colombia y diseño adaptable a celular.
+
 | Sección | Qué permite | Requerimiento |
 |---|---|---|
-| **Monitoreo** | Mapa de Colombia con los 12 dispositivos, gráfica en vivo del que se elija, alertas, eventos y simulación de sismos (solo admin). | RF05, RF07 |
+| **Monitoreo** | Indicadores animados, mapa de Colombia con los 12 dispositivos (pulso por estado, detalle al pasar el mouse, ondas desde el epicentro), **sismógrafo** en vivo del dispositivo elegido, nivel de vibración de cada dispositivo, actividad reciente y simulación de sismos (solo admin). Al confirmarse un sismo aparece el aviso rojo con el tiempo transcurrido, suena la alerta y el sismógrafo salta al dispositivo más afectado. | RF05, RF07 |
+| **Estadísticas** | Eventos y sismos de los últimos 14 días, intensidad de los eventos, eventos por ciudad, respuesta de los hogares, tiempo promedio de atención y **salud de la red** (dispositivos desconectados o con batería baja). | RF04 |
 | **Historial** | Buscar eventos o alertas por fechas, ciudad y aceleración mínima, con paginación y **exportación a CSV** (Excel). | RF04 |
-| **Dispositivos y clientes** | Cada dispositivo con su dueño, conexión, batería, WiFi y sensibilidad; la lista de clientes. El admin puede **desvincular** un dispositivo (por ejemplo, si se vende la casa). | RF06 |
-| **Solicitudes de ayuda** | Los hogares que marcaron «Necesito ayuda», con su dirección y los teléfonos de sus contactos, para llamarlos y marcarlos como **atendidos**. | RF05 |
+| **Dispositivos y clientes** | Búsqueda; cada dispositivo con dueño, conexión, batería, señal WiFi y sensibilidad. **Prueba remota** de la alarma. El admin puede **desvincular** un dispositivo. Lista de hogares. | RF06, RF02 |
+| **Solicitudes de ayuda** | Hogares que marcaron «Necesito ayuda», con dirección y teléfonos de sus contactos, para llamarlos y marcarlos como **atendidos**. Aviso inmediato cuando llega una nueva. | RF05 |
+| **Comunicados** | El admin envía avisos **informativos, de mantenimiento o simulacros** a todos los hogares o a los de una ciudad, con vista previa de cómo se verán en el celular y cuántos hogares los leyeron. | RF05 |
+| **Usuarios** (admin) | Crear usuarios, cambiar su rol, restablecer su contraseña y eliminarlos. Siempre queda al menos un administrador. | RNF Seguridad |
+| **Bitácora de auditoría** (admin) | Registro de quién hizo qué y cuándo: inicios y cierres de sesión, intentos fallidos, bloqueos, simulaciones, desvinculaciones, solicitudes atendidas, cambios de usuarios y contraseñas, comunicados y pruebas remotas. | RNF Seguridad |
+| **Mi contraseña** | Cada usuario cambia su propia contraseña (botón de la llave); se cierran sus sesiones en otros equipos. | RNF Seguridad |
 
-| Rol | Puede |
-|---|---|
-| `admin` | Todo: ver, simular sismos y desvincular dispositivos. |
-| `operador` | Ver el panel, consultar el historial y atender solicitudes de ayuda. |
+| Acción | `admin` | `operador` |
+|---|:---:|:---:|
+| Ver monitoreo, estadísticas, historial, red y comunicados | ✓ | ✓ |
+| Atender solicitudes de ayuda y hacer pruebas remotas | ✓ | ✓ |
+| Simular sismos, enviar comunicados y desvincular | ✓ | — |
+| Gestionar usuarios y ver la bitácora | ✓ | — |
 
-Ejemplo para crear un operador: `npm run usuario -- daniel operador "Daniel Márquez"` (pide la contraseña).
+Los usuarios se crean desde la sección **Usuarios** del panel. También se puede por consola: `npm run usuario -- daniel operador "Daniel Márquez"` (pide la contraseña). Toda contraseña nueva debe tener al menos 8 caracteres, con letras y números.
 
 ## App del cliente «Mi Vigía»
 
-Cada familia que compra Vigía usa esta app desde el celular. Tiene letra grande, botones amplios y alto contraste para que la usen también adultos mayores.
+Cada familia que compra Vigía usa esta app desde el celular. Tiene letra grande, botones amplios y alto contraste para que la usen también adultos mayores, tema claro y oscuro, y se puede instalar en el celular como una app.
 
 | Función | Requerimiento |
 |---|---|
-| Crear cuenta e iniciar sesión | RNF Seguridad |
-| **Vincular** el dispositivo con el código de la caja (`VG-XXXX-XXXX`) | RF06 |
-| Ver en vivo su dispositivo: conexión, batería, WiFi, sensibilidad y vibración de los últimos 30 s | RF05 |
-| **Alerta a pantalla completa** con sonido y vibración cuando hay un sismo, con la distancia a su casa | RF05 |
+| Crear cuenta e iniciar sesión (con opción de ver la contraseña) | RNF Seguridad |
+| **Vincular** el dispositivo con el código de la caja; el código se escribe solo con el formato `VG-XXXX-XXXX` | RF06 |
+| **Estado del hogar** (protegido, sin conexión o alerta) y cada dispositivo en vivo: conexión, batería, WiFi, sensibilidad y **onda de vibración** de los últimos 30 s | RF05 |
+| **Alerta a pantalla completa** con sonido, vibración, distancia a la casa, tiempo transcurrido y los pasos *Agáchate · Cúbrete · Sujétate* | RF05 |
 | Responder **«Estoy bien»** o **«Necesito ayuda»**; la respuesta llega al panel de la empresa | RF05 |
+| **Avisos** de la empresa con marca de «Nuevo»; un aviso de **simulacro** abre una pantalla de práctica que guía los tres pasos | RF05 |
+| **Practicar un simulacro** en casa cuando se quiera | Usabilidad |
+| **Mi plan de emergencia**: kit de 12 elementos con avance, puntos de encuentro y notas (medicamentos, mascotas…); se guarda solo | Usabilidad |
 | **Historial** de alertas y de lo que detectaron sus dispositivos | RF04 |
 | Cambiar **nombre, dirección y sensibilidad** (0,05 a 0,40 g); el nuevo umbral le llega al dispositivo | RF01, RF06 |
 | **Probar la alarma** desde el celular | RF02 |
-| Hasta 5 **contactos de emergencia** | RF06 |
+| Hasta 5 **contactos de emergencia**, con botón para llamarlos | RF06 |
+| **Cambiar la contraseña**; se cierran las sesiones en otros celulares | RNF Seguridad |
 
 Códigos de algunos dispositivos simulados (los demás están en `simulador/dispositivos.json`):
 
@@ -153,12 +166,14 @@ Para verlo:
 **Autenticación y sesiones.**
 - Contraseñas con **scrypt** y sal aleatoria; sesiones guardadas en el servidor con cookie `HttpOnly` y `SameSite=Strict`.
 - Bloqueo de 15 minutos tras 5 intentos fallidos; el mismo mensaje de error para usuario inexistente y contraseña incorrecta.
+- Contraseñas nuevas con al menos 8 caracteres, letras y números; al cambiarla se cierran las demás sesiones, y si el admin la restablece se cierran todas las del usuario.
+- **Bitácora de auditoría** de las acciones del panel y de los intentos fallidos y bloqueos (también los de la app).
 - Roles `admin` y `operador`; las cuentas de clientes están separadas de las del panel (cookie y sesiones propias).
 - Cada dispositivo se autentica con un **token**; la base de datos solo guarda su **hash SHA-256** y la comparación es en tiempo constante.
 
 **Control de acceso.**
-- La API, el canal en vivo del panel y el de la app exigen sesión; simular y desvincular exigen rol `admin`.
-- **Cada cliente solo ve y modifica sus propios dispositivos y contactos** (protección contra IDOR): un identificador ajeno responde 404.
+- La API, el canal en vivo del panel y el de la app exigen sesión; simular, desvincular, enviar comunicados, gestionar usuarios y ver la bitácora exigen rol `admin`.
+- **Cada cliente solo ve y modifica sus propios dispositivos, contactos, plan y avisos** (protección contra IDOR): un identificador ajeno responde 404.
 - El código de vinculación se guarda como hash, un dispositivo vinculado no se puede tomar desde otra cuenta y hay un límite de 10 códigos incorrectos por hora.
 
 **Datos de entrada y salida.**
@@ -174,7 +189,7 @@ Para verlo:
 
 ## Pruebas
 
-`npm test` ejecuta 44 pruebas con el módulo `node:test`. GitHub las ejecuta automáticamente en Node.js 22 y 24 con cada `push` y cada Pull Request (`.github/workflows/pruebas.yml`).
+`npm test` ejecuta 53 pruebas con el módulo `node:test`. GitHub las ejecuta automáticamente en Node.js 22 y 24 con cada `push` y cada Pull Request (`.github/workflows/pruebas.yml`).
 
 | Archivo | Qué prueba |
 |---|---|
@@ -184,6 +199,8 @@ Para verlo:
 | `cliente.test.js` | App del cliente: registro, vinculación, IDOR, sensibilidad, prueba de alarma, contactos y alertas. |
 | `gestion.test.js` | Historial con filtros, CSV, red, desvinculación, solicitudes de ayuda y eventos diferidos. |
 | `disponibilidad.test.js` | El dispositivo detecta y suena sin conexión y envía lo guardado al reconectarse. |
+| `administracion.test.js` | Usuarios y roles, cambio de contraseña, bitácora, estadísticas, comunicados por ciudad y prueba remota. |
+| `hogar.test.js` | Plan de emergencia del hogar y cambio de contraseña del cliente. |
 | `https.test.js` | La plataforma funciona cifrada por HTTPS y WSS y envía las cabeceras de seguridad. |
 | `validacion.test.js`, `seguridad.test.js`, `geo.test.js` | Validación de datos, hash de tokens y cálculo de distancias. |
 
@@ -198,6 +215,7 @@ Para verlo:
 │   ├── detector.js            # confirma sismos con varios dispositivos
 │   ├── portal-cliente.js      # API y canal en vivo de la app del cliente
 │   ├── gestion.js             # historial, CSV, red y solicitudes de ayuda
+│   ├── administracion.js      # usuarios, bitácora, estadísticas, comunicados
 │   ├── auth.js                # inicio de sesión, sesiones y roles
 │   ├── seguridad.js           # hash de tokens y contraseñas
 │   ├── validacion.js          # validación de todo lo que entra
@@ -212,11 +230,14 @@ Para verlo:
 │   └── dispositivos.json      # las 12 casas simuladas
 ├── dashboard/                 # panel de la empresa
 │   ├── login.html, index.html, estilos.css
+│   ├── tema.js                # tema claro u oscuro (panel y app)
+│   ├── ui.js                  # navegación, avisos, diálogos, animaciones
 │   ├── app.js                 # monitoreo en vivo
 │   ├── gestion.js             # historial, red y solicitudes de ayuda
+│   ├── administracion.js      # estadísticas, comunicados, usuarios, bitácora
 │   └── cliente/               # app del cliente «Mi Vigía»
 ├── scripts/usuario.js         # crear usuarios del panel
-├── tests/                     # 44 pruebas con node:test
+├── tests/                     # 53 pruebas con node:test
 ├── docs/trazabilidad.md       # requerimiento → código → prueba
 └── .github/workflows/         # pruebas automáticas en GitHub
 ```
@@ -238,7 +259,8 @@ Cada archivo de código empieza con un encabezado que indica su nombre, tipo, ca
 | 0.1 | Base del sistema: simulador, plataforma central con detector y panel de monitoreo. |
 | 0.2 | Inicio de sesión del panel con roles `admin` y `operador`. |
 | 0.3 | App del cliente «Mi Vigía». |
-| **1.0** | Historial con filtros y CSV, gestión de dispositivos y clientes, solicitudes de ayuda, funcionamiento sin conexión, HTTPS/WSS, pruebas automáticas en GitHub y documentación de trazabilidad. |
+| 1.0 | Historial con filtros y CSV, gestión de dispositivos y clientes, solicitudes de ayuda, funcionamiento sin conexión, HTTPS/WSS, pruebas automáticas en GitHub y documentación de trazabilidad. |
+| **2.0** | Versión final: rediseño completo del panel y de la app; estadísticas, usuarios, bitácora de auditoría, comunicados y simulacros, prueba remota; plan de emergencia familiar, avisos y cambio de contraseña en la app. |
 
 ## Equipo
 

@@ -4,138 +4,339 @@
   Archivo:  dashboard/index.html
   Tipo:     HTML
   Capa:     Capa de presentación · panel de la empresa
-  Qué hace: Estructura del panel de la empresa: monitoreo en vivo (mapa, gráfica, simulación),
-            historial con filtros, dispositivos y clientes, y solicitudes de ayuda.
+  Qué hace: Estructura del panel de la empresa: menú lateral, monitoreo en vivo (mapa, sismógrafo,
+            simulación, actividad), estadísticas, historial, red de dispositivos y clientes,
+            solicitudes de ayuda, comunicados, usuarios, bitácora y ventanas de diálogo.
 -->
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vigía · Panel de monitoreo</title>
+  <title>Vigía · Centro de monitoreo</title>
   <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <script src="tema.js"></script>
   <link rel="stylesheet" href="estilos.css">
 </head>
-<body hidden>
-  <header class="barra">
-    <div class="marca">
-      <img src="logo.svg" alt="" width="40" height="40">
-      <div><p class="sobre">Plataforma central</p><h1>Vigía · Panel de monitoreo</h1></div>
-    </div>
-    <div class="sesion">
-      <span class="chip" id="conexion">Conectando…</span>
-      <span class="quien"><strong id="nombreUsuario"></strong><small id="rolUsuario"></small></span>
-      <button type="button" class="salir" id="salir">Cerrar sesión</button>
-    </div>
-  </header>
+<body class="cargando">
+  <!-- Íconos (se reutilizan con <use>) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-radar" viewBox="0 0 24 24"><path d="M12 12 19 5M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5"/><circle cx="12" cy="12" r="1.6"/></symbol>
+    <symbol id="i-graf" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-red" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-sos" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/><path d="M12 9.5v3M12 15h.01"/></symbol>
+    <symbol id="i-mega" viewBox="0 0 24 24"><path d="M3 10v4l11 5V5L3 10zM14 8a4 4 0 0 1 0 8M7 15l1 5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></symbol>
+    <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-luna" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-son" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+    <symbol id="i-mudo" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6"/></symbol>
+    <symbol id="i-salir" viewBox="0 0 24 24"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+    <symbol id="i-llave" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-onda" viewBox="0 0 24 24"><path d="M2 12h3l2-6 3 12 3-9 2 6 2-3h5"/></symbol>
+    <symbol id="i-campana" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2zM10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-bat" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 10v4"/></symbol>
+    <symbol id="i-desc" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></symbol>
+    <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-tel" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+  </svg>
 
-  <nav class="vistas" aria-label="Secciones del panel">
-    <button type="button" data-vista="vMonitoreo" aria-current="page">Monitoreo</button>
-    <button type="button" data-vista="vHistorial">Historial</button>
-    <button type="button" data-vista="vRed">Dispositivos y clientes</button>
-    <button type="button" data-vista="vAyuda">Solicitudes de ayuda <span class="contador" id="contAyuda" hidden>0</span></button>
-  </nav>
+  <div class="marco">
+    <!-- ================= menú lateral ================= -->
+    <aside class="lateral" id="lateral">
+      <a class="marca" href="#monitoreo">
+        <img src="logo.svg" alt="" width="38" height="38">
+        <span><b>Vigía</b><small>Centro de monitoreo</small></span>
+      </a>
+      <nav aria-label="Secciones del panel">
+        <p class="grupo">Operación</p>
+        <a href="#monitoreo" data-vista="vMonitoreo"><svg><use href="#i-radar"/></svg>Monitoreo<span class="punto-vivo" aria-hidden="true"></span></a>
+        <a href="#estadisticas" data-vista="vEstadisticas"><svg><use href="#i-graf"/></svg>Estadísticas</a>
+        <a href="#historial" data-vista="vHistorial"><svg><use href="#i-reloj"/></svg>Historial</a>
+        <p class="grupo">Red y clientes</p>
+        <a href="#red" data-vista="vRed"><svg><use href="#i-red"/></svg>Dispositivos y clientes</a>
+        <a href="#ayuda" data-vista="vAyuda"><svg><use href="#i-sos"/></svg>Solicitudes de ayuda<span class="contador" id="contAyuda" hidden>0</span></a>
+        <a href="#comunicados" data-vista="vComunicados"><svg><use href="#i-mega"/></svg>Comunicados</a>
+        <p class="grupo solo-admin" hidden>Administración</p>
+        <a href="#usuarios" data-vista="vUsuarios" class="solo-admin" hidden><svg><use href="#i-users"/></svg>Usuarios</a>
+        <a href="#bitacora" data-vista="vBitacora" class="solo-admin" hidden><svg><use href="#i-escudo"/></svg>Bitácora de auditoría</a>
+      </nav>
+      <div class="perfil">
+        <span class="avatar" id="avatar" aria-hidden="true"></span>
+        <span class="quien"><strong id="nombreUsuario"></strong><small id="rolUsuario"></small></span>
+        <button type="button" class="icono" id="bCuenta" title="Cambiar mi contraseña" aria-label="Cambiar mi contraseña"><svg><use href="#i-llave"/></svg></button>
+        <button type="button" class="icono" id="salir" title="Cerrar sesión" aria-label="Cerrar sesión"><svg><use href="#i-salir"/></svg></button>
+      </div>
+    </aside>
+    <div class="velo" id="velo" hidden></div>
 
-  <div class="aviso" id="aviso" role="alert" hidden>
-    <strong>ALERTA SÍSMICA</strong>
-    <span id="avisoTexto"></span>
+    <!-- ================= contenido ================= -->
+    <div class="contenido">
+      <header class="superior">
+        <button type="button" class="icono solo-movil" id="bMenu" aria-label="Abrir menú"><svg><use href="#i-menu"/></svg></button>
+        <div class="titulo"><p class="miga" id="miga">Operación</p><h1 id="tituloVista">Monitoreo en vivo</h1></div>
+        <div class="herramientas">
+          <span class="reloj" id="reloj" aria-label="Hora de Colombia"></span>
+          <span class="chip-conexion" id="conexion"><i></i><span>Conectando…</span></span>
+          <button type="button" class="icono" id="bSonido" title="Sonido de alerta" aria-pressed="true"><svg><use href="#i-son"/></svg></button>
+          <button type="button" class="icono" id="bTema" title="Cambiar tema"><svg><use href="#i-luna"/></svg></button>
+        </div>
+      </header>
+
+      <div class="aviso" id="aviso" role="alert" hidden>
+        <div class="aviso-icono"><svg><use href="#i-onda"/></svg></div>
+        <div class="aviso-texto"><strong>Alerta sísmica confirmada</strong><span id="avisoTexto"></span></div>
+        <span class="aviso-tiempo" id="avisoTiempo"></span>
+        <button type="button" class="icono claro" id="avisoCerrar" aria-label="Ocultar aviso"><svg><use href="#i-x"/></svg></button>
+      </div>
+
+      <!-- ============ Monitoreo ============ -->
+      <main id="vMonitoreo" class="vista">
+        <section class="kpis" aria-label="Resumen de la red">
+          <article class="kpi" style="--c: var(--ok)">
+            <svg class="anillo" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18"/><circle id="anilloLinea" cx="22" cy="22" r="18" pathLength="100" style="--p:0"/></svg>
+            <div><span>Dispositivos en línea</span><strong><b id="kEnLinea" data-num>0</b><small id="kTotal">/ 0</small></strong></div>
+          </article>
+          <article class="kpi" style="--c: var(--coral)"><svg class="kpi-icono"><use href="#i-onda"/></svg><div><span>En alerta ahora</span><strong id="kAlerta" data-num>0</strong></div></article>
+          <article class="kpi" style="--c: var(--ambar)"><svg class="kpi-icono"><use href="#i-campana"/></svg><div><span>Eventos recientes</span><strong id="kEventos" data-num>0</strong></div></article>
+          <article class="kpi" style="--c: var(--violeta)"><svg class="kpi-icono"><use href="#i-escudo"/></svg><div><span>Alertas confirmadas</span><strong id="kAlertas" data-num>0</strong></div></article>
+          <article class="kpi" style="--c: var(--teal)"><svg class="kpi-icono"><use href="#i-sos"/></svg><div><span>Ayuda pendiente</span><strong id="kAyuda" data-num>0</strong></div></article>
+        </section>
+
+        <section class="tarjeta mapa">
+          <header><div><h2>Red de dispositivos</h2><p>Toca un punto para ver su sismógrafo</p></div><span class="estado-red" id="estadoRed">Red estable</span></header>
+          <div class="mapa-caja">
+            <svg id="mapa" viewBox="0 0 420 510" role="img" aria-label="Mapa de Colombia con los dispositivos Vigía"></svg>
+            <div class="mapa-tip" id="mapaTip" hidden></div>
+          </div>
+          <ul class="leyenda"><li><i class="ok"></i>En línea</li><li><i class="al"></i>Alerta</li><li><i class="off"></i>Desconectado</li><li><i class="epi"></i>Epicentro</li></ul>
+        </section>
+
+        <section class="tarjeta grafica">
+          <header><div><h2 id="gTitulo">Sismógrafo en vivo</h2><p id="gSub">Selecciona un dispositivo</p></div><span class="pico" id="gPico"></span></header>
+          <div class="lienzo"><canvas id="grafica" aria-label="Gráfica de aceleración del dispositivo seleccionado"></canvas></div>
+          <dl class="ejes"><div><dt>Eje X</dt><dd id="vx">–</dd></div><div><dt>Eje Y</dt><dd id="vy">–</dd></div><div><dt>Eje Z</dt><dd id="vz">–</dd></div><div class="m"><dt>|a| total</dt><dd id="vm">–</dd></div></dl>
+        </section>
+
+        <section class="tarjeta simulacion" id="cajaSimulacion" hidden>
+          <header><div><h2>Simular un sismo</h2><p>Para pruebas y demostraciones: cada dispositivo siente la sacudida según su distancia</p></div></header>
+          <form id="formSimulacion">
+            <label>Epicentro
+              <select id="epicentro">
+                <option value="4.37,-73.21">Paratebueno, Cundinamarca</option>
+                <option value="6.82,-73.03">Mesa de los Santos, Santander</option>
+                <option value="3.88,-77.40">Costa Pacífica, Valle</option>
+                <option value="6.25,-75.70">Occidente de Antioquia</option>
+                <option value="4.53,-75.68">Eje Cafetero, Quindío</option>
+              </select>
+            </label>
+            <label class="magnitud">Magnitud <span><output id="magTxt">6,3</output><em id="magNivel">Fuerte</em></span>
+              <input type="range" id="magnitud" min="4" max="7.5" step="0.1" value="6.3">
+            </label>
+            <button type="submit" class="boton peligro"><svg><use href="#i-onda"/></svg>Simular sismo</button>
+            <p class="estado" id="simEstado" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="tarjeta lista">
+          <header><div><h2>Dispositivos</h2><p>Nivel de vibración en tiempo real</p></div></header>
+          <div class="tabla-disp" id="tablaDispositivos" role="list"></div>
+        </section>
+
+        <section class="tarjeta actividad">
+          <header><div><h2>Actividad reciente</h2><p>Eventos de los dispositivos y alertas confirmadas</p></div></header>
+          <ol id="actividad" class="linea-tiempo"></ol>
+        </section>
+      </main>
+
+      <!-- ============ Estadísticas ============ -->
+      <main id="vEstadisticas" class="vista" hidden>
+        <section class="cifras" id="eCifras"></section>
+        <section class="tarjeta ancho">
+          <header><div><h2>Actividad de los últimos 14 días</h2><p>Eventos detectados por los dispositivos y alertas confirmadas por día</p></div></header>
+          <div class="lienzo alto"><canvas id="gDias"></canvas></div>
+        </section>
+        <section class="tarjeta">
+          <header><div><h2>Intensidad de los eventos</h2><p>Aceleración máxima (PGA) registrada</p></div></header>
+          <div class="lienzo"><canvas id="gIntensidad"></canvas></div>
+        </section>
+        <section class="tarjeta">
+          <header><div><h2>Eventos por ciudad</h2><p>Total histórico</p></div></header>
+          <div class="lienzo"><canvas id="gCiudades"></canvas></div>
+        </section>
+        <section class="tarjeta">
+          <header><div><h2>Salud de la red</h2><p>Dispositivos que necesitan atención</p></div></header>
+          <div id="eSalud" class="salud"></div>
+        </section>
+        <section class="tarjeta">
+          <header><div><h2>Respuesta de los hogares</h2><p>Después de cada alerta</p></div></header>
+          <div class="lienzo"><canvas id="gRespuestas"></canvas></div>
+        </section>
+      </main>
+
+      <!-- ============ Historial (RF04) ============ -->
+      <main id="vHistorial" class="vista" hidden>
+        <section class="tarjeta ancho">
+          <header><div><h2>Historial</h2><p>Busca eventos o alertas y expórtalos a Excel (CSV)</p></div></header>
+          <form id="fFiltros" class="filtros">
+            <div class="segmentado" role="radiogroup" aria-label="Qué buscar">
+              <label><input type="radio" name="tipo" value="eventos" checked><span>Eventos</span></label>
+              <label><input type="radio" name="tipo" value="alertas"><span>Alertas confirmadas</span></label>
+            </div>
+            <label>Desde <input type="date" name="desde"></label>
+            <label>Hasta <input type="date" name="hasta"></label>
+            <label>Ciudad <select name="ciudad"><option value="">Todas</option></select></label>
+            <label>Aceleración mínima (g) <input type="number" name="min" min="0" max="16" step="0.01" placeholder="0,15"></label>
+            <div class="botones"><button type="submit" class="boton"><svg><use href="#i-buscar"/></svg>Buscar</button><a class="boton secundario" id="bCSV" href="/api/historial.csv" download><svg><use href="#i-desc"/></svg>Exportar CSV</a></div>
+          </form>
+          <p class="estado" id="hEstado" aria-live="polite"></p>
+          <div class="desplazable"><table id="tHistorial" class="tabla"></table></div>
+          <div class="paginas"><button type="button" class="boton fantasma" id="hAnterior">Anterior</button><span id="hPagina"></span><button type="button" class="boton fantasma" id="hSiguiente">Siguiente</button></div>
+        </section>
+      </main>
+
+      <!-- ============ Dispositivos y clientes ============ -->
+      <main id="vRed" class="vista" hidden>
+        <section class="cifras" id="rCifras"></section>
+        <section class="tarjeta ancho">
+          <header><div><h2>Dispositivos</h2><p id="rResumen"></p></div>
+            <label class="buscador"><svg><use href="#i-buscar"/></svg><input type="search" id="rBuscar" placeholder="Buscar dispositivo, ciudad o dueño" aria-label="Buscar dispositivo"></label></header>
+          <div class="desplazable"><table id="tRedDispositivos" class="tabla"></table></div>
+        </section>
+        <section class="tarjeta ancho">
+          <header><div><h2>Clientes</h2><p>Hogares registrados en la app Mi Vigía</p></div></header>
+          <div class="desplazable"><table id="tClientes" class="tabla"></table></div>
+        </section>
+      </main>
+
+      <!-- ============ Solicitudes de ayuda ============ -->
+      <main id="vAyuda" class="vista" hidden>
+        <section class="tarjeta ancho">
+          <header><div><h2>Solicitudes de ayuda</h2><p>Hogares que marcaron «Necesito ayuda» después de un sismo. Llama a sus contactos y márcalas como atendidas.</p></div>
+            <div class="segmentado chico" role="radiogroup" aria-label="Filtrar solicitudes">
+              <label><input type="radio" name="fAyuda" value="todas" checked><span>Todas</span></label>
+              <label><input type="radio" name="fAyuda" value="pendientes"><span>Pendientes</span></label>
+            </div></header>
+          <div id="listaAyuda" class="solicitudes"></div>
+        </section>
+      </main>
+
+      <!-- ============ Comunicados ============ -->
+      <main id="vComunicados" class="vista" hidden>
+        <section class="tarjeta" id="cajaComunicado">
+          <header><div><h2>Nuevo comunicado</h2><p>Llega al instante a la app Mi Vigía de los hogares elegidos</p></div></header>
+          <form id="fComunicado" class="form-columna" novalidate>
+            <div class="segmentado" role="radiogroup" aria-label="Tipo de comunicado">
+              <label><input type="radio" name="tipo" value="informativo" checked><span>Informativo</span></label>
+              <label><input type="radio" name="tipo" value="mantenimiento"><span>Mantenimiento</span></label>
+              <label><input type="radio" name="tipo" value="simulacro"><span>Simulacro</span></label>
+            </div>
+            <label>Título <input name="titulo" maxlength="80" required placeholder="Ej.: Simulacro nacional de evacuación"></label>
+            <label>Mensaje <textarea name="mensaje" maxlength="600" rows="4" required placeholder="Escribe el mensaje en lenguaje sencillo"></textarea><small class="cuenta" id="cuentaMsg">0 / 600</small></label>
+            <label>Destinatarios <select name="ciudad"><option value="">Todos los hogares</option></select></label>
+            <p class="nota" id="notaSimulacro" hidden>En un simulacro la app del cliente muestra una pantalla de práctica (azul) con los pasos de protección. No hace sonar la alarma real.</p>
+            <p class="error" role="alert"></p>
+            <button type="submit" class="boton"><svg><use href="#i-mega"/></svg>Enviar comunicado</button>
+          </form>
+        </section>
+        <section class="tarjeta vista-previa">
+          <header><div><h2>Así lo verá el cliente</h2><p>Vista previa en la app Mi Vigía</p></div></header>
+          <div class="celular"><div class="celular-pantalla"><p class="celular-app">Mi Vigía · Avisos</p><article class="aviso-cliente" id="previa"></article></div></div>
+        </section>
+        <section class="tarjeta ancho">
+          <header><div><h2>Comunicados enviados</h2><p id="cResumen"></p></div></header>
+          <div id="listaComunicados" class="comunicados"></div>
+        </section>
+      </main>
+
+      <!-- ============ Usuarios (admin) ============ -->
+      <main id="vUsuarios" class="vista" hidden>
+        <section class="tarjeta ancho">
+          <header><div><h2>Usuarios del panel</h2><p>Administradores (control total) y operadores (monitoreo y atención de ayuda)</p></div>
+            <button type="button" class="boton" id="bNuevoUsuario"><svg><use href="#i-mas"/></svg>Nuevo usuario</button></header>
+          <div class="desplazable"><table id="tUsuarios" class="tabla"></table></div>
+        </section>
+        <section class="tarjeta ancho permisos">
+          <header><div><h2>Permisos por rol</h2></div></header>
+          <table class="tabla">
+            <thead><tr><th>Acción</th><th class="centro">Administrador</th><th class="centro">Operador</th></tr></thead>
+            <tbody>
+              <tr><td>Ver monitoreo, estadísticas, historial y red</td><td class="centro si">✓</td><td class="centro si">✓</td></tr>
+              <tr><td>Atender solicitudes de ayuda y probar dispositivos</td><td class="centro si">✓</td><td class="centro si">✓</td></tr>
+              <tr><td>Simular sismos y enviar comunicados</td><td class="centro si">✓</td><td class="centro no">—</td></tr>
+              <tr><td>Desvincular dispositivos</td><td class="centro si">✓</td><td class="centro no">—</td></tr>
+              <tr><td>Gestionar usuarios y ver la bitácora</td><td class="centro si">✓</td><td class="centro no">—</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+
+      <!-- ============ Bitácora (admin) ============ -->
+      <main id="vBitacora" class="vista" hidden>
+        <section class="tarjeta ancho">
+          <header><div><h2>Bitácora de auditoría</h2><p>Quién hizo qué y cuándo. No se puede modificar desde el panel.</p></div></header>
+          <form id="fBitacora" class="filtros compacto">
+            <label>Acción <select name="accion"><option value="">Todas</option></select></label>
+            <label>Usuario <input name="usuario" placeholder="Ej.: admin" autocomplete="off"></label>
+            <div class="botones"><button type="submit" class="boton"><svg><use href="#i-buscar"/></svg>Filtrar</button></div>
+          </form>
+          <ol id="listaBitacora" class="bitacora"></ol>
+          <div class="paginas"><button type="button" class="boton fantasma" id="bAnterior">Anterior</button><span id="bPagina"></span><button type="button" class="boton fantasma" id="bSiguiente">Siguiente</button></div>
+        </section>
+      </main>
+    </div>
   </div>
 
-  <main id="vMonitoreo">
-    <section class="kpis" aria-label="Resumen">
-      <div class="kpi"><span>Dispositivos en línea</span><strong id="kEnLinea">–</strong></div>
-      <div class="kpi"><span>En alerta ahora</span><strong id="kAlerta">–</strong></div>
-      <div class="kpi"><span>Eventos recientes</span><strong id="kEventos">–</strong></div>
-      <div class="kpi"><span>Umbral de detección</span><strong id="kUmbral">–</strong></div>
-    </section>
+  <!-- ================= ventanas de diálogo ================= -->
+  <dialog id="dUsuario" class="dialogo">
+    <form method="dialog" id="fUsuario" novalidate>
+      <header><h2 id="dUsuarioTitulo">Nuevo usuario</h2><button type="button" class="icono" data-cerrar aria-label="Cerrar"><svg><use href="#i-x"/></svg></button></header>
+      <label>Usuario <input name="usuario" autocomplete="off" autocapitalize="none" spellcheck="false" required placeholder="Ej.: dmarquez"></label>
+      <label>Nombre completo <input name="nombre" autocomplete="off" required></label>
+      <div class="segmentado" role="radiogroup" aria-label="Rol">
+        <label><input type="radio" name="rol" value="operador" checked><span>Operador</span></label>
+        <label><input type="radio" name="rol" value="admin"><span>Administrador</span></label>
+      </div>
+      <label><span id="etqClave">Contraseña</span> <input name="clave" type="password" autocomplete="new-password"></label>
+      <div class="fuerza" aria-hidden="true"><i></i></div>
+      <p class="nota">Mínimo 8 caracteres, con letras y números.</p>
+      <p class="error" role="alert"></p>
+      <footer><button type="button" class="boton fantasma" data-cerrar>Cancelar</button><button type="submit" class="boton">Guardar</button></footer>
+    </form>
+  </dialog>
 
-    <section class="tarjeta mapa">
-      <header><h2>Red de dispositivos</h2><p>Toca un punto para ver sus lecturas</p></header>
-      <svg id="mapa" viewBox="0 0 420 510" role="img" aria-label="Mapa de Colombia con los dispositivos Vigía"></svg>
-      <ul class="leyenda"><li><i class="ok"></i>En línea</li><li><i class="al"></i>Alerta</li><li><i class="off"></i>Desconectado</li><li><i class="epi"></i>Epicentro estimado</li></ul>
-    </section>
+  <dialog id="dConfirmar" class="dialogo chico">
+    <form method="dialog">
+      <header><h2 id="dConfirmarTitulo">¿Confirmar?</h2></header>
+      <p id="dConfirmarTexto"></p>
+      <footer><button type="button" class="boton fantasma" data-cerrar>Cancelar</button><button type="button" class="boton peligro" id="dConfirmarSi">Confirmar</button></footer>
+    </form>
+  </dialog>
 
-    <section class="tarjeta grafica">
-      <header><h2 id="gTitulo">Lecturas en vivo</h2><p id="gSub">Selecciona un dispositivo</p></header>
-      <div class="lienzo"><canvas id="grafica" aria-label="Gráfica de aceleración del dispositivo seleccionado"></canvas></div>
-      <dl class="ejes"><div><dt>X</dt><dd id="vx">–</dd></div><div><dt>Y</dt><dd id="vy">–</dd></div><div><dt>Z</dt><dd id="vz">–</dd></div><div><dt>|a|</dt><dd id="vm">–</dd></div></dl>
-    </section>
+  <dialog id="dCuenta" class="dialogo">
+    <form method="dialog" id="fCuenta" novalidate>
+      <header><h2>Cambiar mi contraseña</h2><button type="button" class="icono" data-cerrar aria-label="Cerrar"><svg><use href="#i-x"/></svg></button></header>
+      <label>Contraseña actual <input name="actual" type="password" autocomplete="current-password" required></label>
+      <label>Contraseña nueva <input name="nueva" type="password" autocomplete="new-password" required></label>
+      <div class="fuerza" aria-hidden="true"><i></i></div>
+      <label>Repite la contraseña nueva <input name="repetida" type="password" autocomplete="new-password" required></label>
+      <p class="nota">Las sesiones abiertas en otros equipos se cerrarán.</p>
+      <p class="error" role="alert"></p>
+      <footer><button type="button" class="boton fantasma" data-cerrar>Cancelar</button><button type="submit" class="boton">Cambiar contraseña</button></footer>
+    </form>
+  </dialog>
 
-    <section class="tarjeta simulacion" id="cajaSimulacion" hidden>
-      <header><h2>Simular un sismo</h2><p>Solo para pruebas: los dispositivos simulados sentirán la sacudida según su distancia</p></header>
-      <form id="formSimulacion">
-        <label>Epicentro
-          <select id="epicentro">
-            <option value="4.37,-73.21">Paratebueno, Cundinamarca</option>
-            <option value="6.82,-73.03">Mesa de los Santos, Santander</option>
-            <option value="3.88,-77.40">Costa Pacífica, Valle</option>
-            <option value="6.25,-75.70">Occidente de Antioquia</option>
-          </select>
-        </label>
-        <label>Magnitud <output id="magTxt">6,3</output>
-          <input type="range" id="magnitud" min="4" max="7.5" step="0.1" value="6.3">
-        </label>
-        <button type="submit" class="boton">Simular sismo</button>
-        <p class="estado" id="simEstado" aria-live="polite"></p>
-      </form>
-    </section>
-
-    <section class="tarjeta lista">
-      <header><h2>Dispositivos</h2></header>
-      <table>
-        <thead><tr><th scope="col">Dispositivo</th><th scope="col">Ciudad</th><th scope="col">Estado</th><th scope="col" class="num">|a| (g)</th></tr></thead>
-        <tbody id="tablaDispositivos"></tbody>
-      </table>
-    </section>
-
-    <section class="tarjeta historial">
-      <header><h2>Alertas confirmadas</h2></header>
-      <ol id="listaAlertas" class="registro"></ol>
-      <header><h2>Eventos de los dispositivos</h2></header>
-      <ol id="listaEventos" class="registro"></ol>
-    </section>
-  </main>
-
-  <!-- Historial consultable (RF04) -->
-  <main id="vHistorial" class="vista" hidden>
-    <section class="tarjeta">
-      <header><h2>Historial</h2><p>Busca eventos de los dispositivos o alertas confirmadas y expórtalos a Excel (CSV)</p></header>
-      <form id="fFiltros" class="filtros">
-        <label>Buscar <select name="tipo"><option value="eventos">Eventos de dispositivos</option><option value="alertas">Alertas confirmadas</option></select></label>
-        <label>Desde <input type="date" name="desde"></label>
-        <label>Hasta <input type="date" name="hasta"></label>
-        <label>Ciudad <select name="ciudad"><option value="">Todas</option></select></label>
-        <label>Aceleración mínima (g) <input type="number" name="min" min="0" max="16" step="0.01" placeholder="0,15"></label>
-        <div class="botones"><button type="submit" class="boton">Buscar</button><a class="boton secundario" id="bCSV" href="/api/historial.csv" download>Exportar CSV</a></div>
-      </form>
-      <p class="estado" id="hEstado" aria-live="polite"></p>
-      <div class="desplazable"><table id="tHistorial"></table></div>
-      <div class="paginas"><button type="button" class="salir" id="hAnterior">Anterior</button><span id="hPagina"></span><button type="button" class="salir" id="hSiguiente">Siguiente</button></div>
-    </section>
-  </main>
-
-  <!-- Dispositivos y clientes -->
-  <main id="vRed" class="vista" hidden>
-    <section class="tarjeta">
-      <header><h2>Dispositivos</h2><p id="rResumen"></p></header>
-      <div class="desplazable"><table id="tRedDispositivos"></table></div>
-    </section>
-    <section class="tarjeta">
-      <header><h2>Clientes</h2><p>Hogares registrados en la app Mi Vigía</p></header>
-      <div class="desplazable"><table id="tClientes"></table></div>
-    </section>
-  </main>
-
-  <!-- Solicitudes de ayuda -->
-  <main id="vAyuda" class="vista" hidden>
-    <section class="tarjeta">
-      <header><h2>Solicitudes de ayuda</h2><p>Hogares que marcaron «Necesito ayuda» en la app después de un sismo. Llama a sus contactos y marca la solicitud como atendida.</p></header>
-      <div id="listaAyuda" class="solicitudes"></div>
-    </section>
-  </main>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
   <script src="/vendor/chart.js/chart.umd.js"></script>
   <script src="mapa-colombia.js"></script>
+  <script src="ui.js"></script>
   <script src="app.js"></script>
   <script src="gestion.js"></script>
+  <script src="administracion.js"></script>
 </body>
 </html>

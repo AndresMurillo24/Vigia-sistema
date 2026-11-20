@@ -76,6 +76,30 @@ const ESQUEMA = `
     fecha      TEXT NOT NULL,
     UNIQUE (alerta_id, cliente_id)
   );
+  CREATE TABLE IF NOT EXISTS auditoria (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha   TEXT NOT NULL,
+    usuario TEXT NOT NULL,
+    accion  TEXT NOT NULL,
+    detalle TEXT NOT NULL DEFAULT '',
+    ip      TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS auditoria_fecha ON auditoria (id DESC);
+  CREATE TABLE IF NOT EXISTS comunicados (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha   TEXT NOT NULL,
+    tipo    TEXT NOT NULL CHECK (tipo IN ('informativo', 'mantenimiento', 'simulacro')),
+    titulo  TEXT NOT NULL,
+    mensaje TEXT NOT NULL,
+    ciudad  TEXT,
+    autor   TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS comunicados_leidos (
+    comunicado_id INTEGER NOT NULL REFERENCES comunicados(id) ON DELETE CASCADE,
+    cliente_id    INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+    fecha         TEXT NOT NULL,
+    PRIMARY KEY (comunicado_id, cliente_id)
+  );
 `;
 
 // Columnas que se agregaron después de la primera versión. Si una base de datos vieja
@@ -86,6 +110,12 @@ const COLUMNAS_NUEVAS = {
     codigo_hash: 'TEXT',
     umbral: 'REAL NOT NULL DEFAULT 0.15',
     direccion: "TEXT NOT NULL DEFAULT ''",
+  },
+  usuarios: {
+    ultimo_acceso: 'TEXT',
+  },
+  clientes: {
+    plan: "TEXT NOT NULL DEFAULT '{}'",
   },
   respuestas: {
     atendida: 'INTEGER NOT NULL DEFAULT 0',
@@ -191,7 +221,69 @@ function abrirBaseDatos(ruta) {
       WHERE r.estado = 'ayuda' ORDER BY r.atendida, r.fecha DESC LIMIT ?`),
     atenderSolicitud: db.prepare("UPDATE respuestas SET atendida = 1, atendida_por = ?, atendida_fecha = ? WHERE id = ? AND estado = 'ayuda' AND atendida = 0"),
     pendientesAyuda: db.prepare("SELECT COUNT(*) AS n FROM respuestas WHERE estado = 'ayuda' AND atendida = 0"),
+    // administración de usuarios del panel
+    listarUsuarios: db.prepare('SELECT id, usuario, nombre, rol, creado, ultimo_acceso FROM usuarios ORDER BY rol, usuario'),
+    contarAdmins: db.prepare("SELECT COUNT(*) AS n FROM usuarios WHERE rol = 'admin'"),
+    actualizarUsuario: db.prepare('UPDATE usuarios SET nombre = ?, rol = ?, clave_hash = ? WHERE usuario = ?'),
+    borrarUsuario: db.prepare('DELETE FROM usuarios WHERE usuario = ?'),
+    marcarAcceso: db.prepare('UPDATE usuarios SET ultimo_acceso = ? WHERE id = ?'),
+    borrarOtrasSesiones: db.prepare('DELETE FROM sesiones WHERE usuario_id = ? AND token_hash <> ?'),
+    // clientes: contraseña y plan de emergencia
+    clientePorId: db.prepare('SELECT * FROM clientes WHERE id = ?'),
+    cambiarClaveCliente: db.prepare('UPDATE clientes SET clave_hash = ? WHERE id = ?'),
+    borrarOtrasSesionesCliente: db.prepare('DELETE FROM sesiones_clientes WHERE cliente_id = ? AND token_hash <> ?'),
+    guardarPlan: db.prepare('UPDATE clientes SET plan = ? WHERE id = ?'),
+    // bitácora de auditoría
+    auditar: db.prepare('INSERT INTO auditoria (fecha, usuario, accion, detalle, ip) VALUES (?, ?, ?, ?, ?)'),
+    // comunicados a los clientes
+    guardarComunicado: db.prepare('INSERT INTO comunicados (fecha, tipo, titulo, mensaje, ciudad, autor) VALUES (?, ?, ?, ?, ?, ?)'),
+    listarComunicados: db.prepare(`
+      SELECT c.*, (SELECT COUNT(*) FROM comunicados_leidos l WHERE l.comunicado_id = c.id) AS leidos
+      FROM comunicados c ORDER BY c.id DESC LIMIT ?`),
+    comunicadosDeCliente: db.prepare(`
+      SELECT c.id, c.fecha, c.tipo, c.titulo, c.mensaje, c.ciudad,
+        EXISTS (SELECT 1 FROM comunicados_leidos l WHERE l.comunicado_id = c.id AND l.cliente_id = ?) AS leido
+      FROM comunicados c
+      WHERE c.ciudad IS NULL OR c.ciudad IN (SELECT ciudad FROM dispositivos WHERE cliente_id = ?)
+      ORDER BY c.id DESC LIMIT ?`),
+    obtenerComunicado: db.prepare('SELECT * FROM comunicados WHERE id = ?'),
+    marcarLeido: db.prepare('INSERT OR IGNORE INTO comunicados_leidos (comunicado_id, cliente_id, fecha) VALUES (?, ?, ?)'),
+    clientesDestino: db.prepare(`
+      SELECT id FROM clientes WHERE ? IS NULL OR id IN (SELECT cliente_id FROM dispositivos WHERE ciudad = ? AND cliente_id IS NOT NULL)`),
+    // estadísticas
+    eventosPorDia: db.prepare(`
+      SELECT substr(datetime(fecha, '-5 hours'), 1, 10) AS dia, COUNT(*) AS n, MAX(pga) AS max
+      FROM eventos WHERE fecha >= ? GROUP BY dia ORDER BY dia`),
+    alertasPorDia: db.prepare(`
+      SELECT substr(datetime(fecha, '-5 hours'), 1, 10) AS dia, COUNT(*) AS n FROM alertas WHERE fecha >= ? GROUP BY dia`),
+    eventosPorCiudad: db.prepare(`
+      SELECT d.ciudad, COUNT(*) AS n, MAX(e.pga) AS max FROM eventos e JOIN dispositivos d ON d.id = e.dispositivo_id
+      GROUP BY d.ciudad ORDER BY n DESC, d.ciudad`),
+    distribucionPga: db.prepare(`
+      SELECT SUM(pga < 0.2) AS leve, SUM(pga >= 0.2 AND pga < 0.3) AS moderado,
+        SUM(pga >= 0.3 AND pga < 0.5) AS fuerte, SUM(pga >= 0.5) AS severo FROM eventos`),
+    totales: db.prepare(`
+      SELECT (SELECT COUNT(*) FROM eventos) AS eventos, (SELECT COUNT(*) FROM alertas) AS alertas,
+        (SELECT COUNT(*) FROM clientes) AS clientes, (SELECT COUNT(*) FROM contactos) AS contactos,
+        (SELECT COUNT(*) FROM respuestas WHERE estado = 'bien') AS bien,
+        (SELECT COUNT(*) FROM respuestas WHERE estado = 'ayuda') AS ayuda,
+        (SELECT COUNT(*) FROM respuestas WHERE estado = 'ayuda' AND atendida = 1) AS atendidas,
+        (SELECT ROUND(AVG((julianday(atendida_fecha) - julianday(fecha)) * 1440), 1)
+           FROM respuestas WHERE atendida = 1) AS minutosAtencion,
+        (SELECT MAX(pga_max) FROM alertas) AS pgaMaxima`),
   };
+
+  /** Bitácora de auditoría con filtros opcionales (acción y usuario), siempre con parámetros. */
+  function auditoria(f, limite, desplazamiento) {
+    const cond = [], params = [];
+    if (f.accion) { cond.push('accion = ?'); params.push(f.accion); }
+    if (f.usuario) { cond.push('usuario = ?'); params.push(f.usuario); }
+    const donde = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+    const total = db.prepare(`SELECT COUNT(*) AS n FROM auditoria ${donde}`).get(...params).n;
+    const items = db.prepare(`SELECT * FROM auditoria ${donde} ORDER BY id DESC LIMIT ? OFFSET ?`).all(...params, limite, desplazamiento);
+    return { total, items };
+  }
+  const leerPlan = (texto) => { try { return JSON.parse(texto || '{}'); } catch { return {}; } };
 
   /**
    * Historial consultable (RF04). Los filtros se agregan como parámetros (?), nunca
@@ -274,6 +366,37 @@ function abrirBaseDatos(ruta) {
     solicitudesAyuda: (n = 50) => q.solicitudesAyuda.all(n),
     atenderSolicitud: (id, usuario) => q.atenderSolicitud.run(usuario, new Date().toISOString(), id).changes === 1,
     pendientesAyuda: () => q.pendientesAyuda.get().n,
+    // administración de usuarios
+    listarUsuarios: () => q.listarUsuarios.all(),
+    contarAdmins: () => q.contarAdmins.get().n,
+    actualizarUsuario: (usuario, u) => q.actualizarUsuario.run(u.nombre, u.rol, u.clave_hash, usuario).changes === 1,
+    borrarUsuario: (usuario) => q.borrarUsuario.run(usuario).changes === 1,
+    marcarAcceso: (id) => q.marcarAcceso.run(new Date().toISOString(), id),
+    borrarOtrasSesiones: (usuarioId, tokenHash) => q.borrarOtrasSesiones.run(usuarioId, tokenHash),
+    // clientes
+    clientePorId: (id) => q.clientePorId.get(id),
+    cambiarClaveCliente: (id, claveHash) => q.cambiarClaveCliente.run(claveHash, id),
+    borrarOtrasSesionesCliente: (id, tokenHash) => q.borrarOtrasSesionesCliente.run(id, tokenHash),
+    obtenerPlan: (id) => leerPlan(q.clientePorId.get(id)?.plan),
+    guardarPlan: (id, plan) => q.guardarPlan.run(JSON.stringify(plan), id),
+    // auditoría
+    auditar: (a) => q.auditar.run(new Date().toISOString(), a.usuario, a.accion, a.detalle || '', a.ip || ''),
+    auditoria,
+    // comunicados
+    guardarComunicado: (c) => Number(q.guardarComunicado.run(new Date().toISOString(), c.tipo, c.titulo, c.mensaje, c.ciudad, c.autor).lastInsertRowid),
+    listarComunicados: (n = 30) => q.listarComunicados.all(n),
+    comunicadosDeCliente: (id, n = 30) => q.comunicadosDeCliente.all(id, id, n).map((c) => ({ ...c, leido: !!c.leido })),
+    obtenerComunicado: (id) => q.obtenerComunicado.get(id),
+    marcarLeido: (comunicadoId, clienteId) => q.marcarLeido.run(comunicadoId, clienteId, new Date().toISOString()),
+    clientesDestino: (ciudad) => q.clientesDestino.all(ciudad, ciudad).map((r) => r.id),
+    // estadísticas
+    estadisticas: (desde) => ({
+      eventosPorDia: q.eventosPorDia.all(desde),
+      alertasPorDia: q.alertasPorDia.all(desde),
+      eventosPorCiudad: q.eventosPorCiudad.all(),
+      distribucion: Object.fromEntries(Object.entries(q.distribucionPga.get()).map(([k, v]) => [k, v || 0])),
+      totales: q.totales.get(),
+    }),
     cerrar: () => db.close(),
   };
 }
