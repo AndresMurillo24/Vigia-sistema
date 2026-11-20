@@ -4,53 +4,85 @@
   Archivo:  dashboard/cliente/index.html
   Tipo:     HTML
   Capa:     Capa de presentación · app del cliente
-  Qué hace: Estructura de «Mi Vigía»: acceso, vinculación, inicio, historial, ajustes y alerta de
-            sismo.
+  Qué hace: Estructura de «Mi Vigía»: acceso, vinculación, inicio con el estado del hogar, avisos de
+            la empresa, plan de emergencia familiar, historial, ajustes, alerta de sismo y simulacro.
 -->
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mi Vigía</title>
-  <meta name="theme-color" content="#1b7867">
+  <meta name="theme-color" content="#0f3b33">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/logo.svg">
+  <script src="/tema.js"></script>
   <link rel="stylesheet" href="cliente.css">
 </head>
 <body>
-  <!-- Acceso: ingresar o crear cuenta -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="c-casa" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-6h4v6"/></symbol>
+    <symbol id="c-campana" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2zM10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="c-plan" viewBox="0 0 24 24"><path d="M9 4h6M9 4a2 2 0 0 0-2 2H5v15h14V6h-2a2 2 0 0 0-2-2M9 13l2 2 4-4"/></symbol>
+    <symbol id="c-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="c-ajustes" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="c-escudo" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="c-onda" viewBox="0 0 24 24"><path d="M2 12h3l2-6 3 12 3-9 2 6 2-3h5"/></symbol>
+    <symbol id="c-bat" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 10v4"/></symbol>
+    <symbol id="c-wifi" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></symbol>
+    <symbol id="c-sens" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="c-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="c-luna" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="c-ojo" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="c-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-12a7 7 0 1 1 14 0c0 5.7-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+    <symbol id="c-persona" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="c-tel" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="c-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="c-llave" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
+    <symbol id="c-salir" viewBox="0 0 24 24"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+    <symbol id="c-agachate" viewBox="0 0 48 48"><circle cx="24" cy="12" r="5"/><path d="M24 18v9l-8 6M24 27l8 6M14 22l10 3 10-3M8 42h32"/></symbol>
+    <symbol id="c-cubrete" viewBox="0 0 48 48"><path d="M6 20h36M10 20v20M38 20v20"/><circle cx="24" cy="29" r="4"/><path d="M24 33v5l-5 2M24 38l5 2"/></symbol>
+    <symbol id="c-sujetate" viewBox="0 0 48 48"><path d="M6 18h36M12 18v24M36 18v24"/><circle cx="22" cy="28" r="4"/><path d="M26 27l8-7M22 32v6l-5 3M22 38l5 3"/></symbol>
+  </svg>
+
+  <!-- ================= acceso ================= -->
   <main class="pantalla acceso" id="pAcceso" hidden>
-    <img src="/logo.svg" alt="" width="72" height="72">
+    <div class="acceso-arte" aria-hidden="true">
+      <span class="pulso"></span><span class="pulso p2"></span><span class="pulso p3"></span>
+      <img src="/logo.svg" alt="" width="88" height="88">
+    </div>
     <h1>Mi Vigía</h1>
-    <p class="sub">Tu alerta sísmica en casa</p>
+    <p class="sub">Tu alerta sísmica en casa. Te avisamos antes de que llegue la sacudida.</p>
     <div class="pestanas" role="tablist">
+      <span class="pestanas-fondo" aria-hidden="true"></span>
       <button type="button" role="tab" id="tabIngresar" aria-selected="true">Ingresar</button>
       <button type="button" role="tab" id="tabRegistro" aria-selected="false">Crear cuenta</button>
     </div>
-    <form id="fIngresar" novalidate>
-      <label>Correo <input name="correo" type="email" autocomplete="email" required></label>
-      <label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
+    <form id="fIngresar" class="forma" novalidate>
+      <label>Correo <input name="correo" type="email" autocomplete="email" inputmode="email" required></label>
+      <label class="campo-clave">Contraseña <input name="clave" type="password" autocomplete="current-password" required>
+        <button type="button" class="ver" data-ver aria-label="Mostrar contraseña"><svg><use href="#c-ojo"/></svg></button></label>
       <p class="error" role="alert"></p>
       <button type="submit" class="boton">Ingresar</button>
     </form>
-    <form id="fRegistro" novalidate hidden>
+    <form id="fRegistro" class="forma" novalidate hidden>
       <label>Nombre <input name="nombre" autocomplete="name" required></label>
-      <label>Correo <input name="correo" type="email" autocomplete="email" required></label>
-      <label>Contraseña <small>(mínimo 8 caracteres)</small> <input name="clave" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label>Correo <input name="correo" type="email" autocomplete="email" inputmode="email" required></label>
+      <label class="campo-clave">Contraseña <small>(mínimo 8 caracteres)</small> <input name="clave" type="password" autocomplete="new-password" minlength="8" required>
+        <button type="button" class="ver" data-ver aria-label="Mostrar contraseña"><svg><use href="#c-ojo"/></svg></button></label>
       <p class="error" role="alert"></p>
       <button type="submit" class="boton">Crear cuenta</button>
     </form>
     <p class="pie"><a href="/login.html">¿Trabajas en Vigía? Panel de la empresa</a></p>
   </main>
 
-  <!-- Vincular dispositivo -->
+  <!-- ================= vincular dispositivo ================= -->
   <main class="pantalla acceso" id="pVincular" hidden>
-    <img src="/logo.svg" alt="" width="64" height="64">
-    <h1>Vincula tu dispositivo</h1>
-    <p class="sub">Escribe el código que viene en la caja y en la parte de atrás de tu Vigía.</p>
-    <form id="fVincular" novalidate>
-      <label>Código del dispositivo <input name="codigo" placeholder="VG-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" required></label>
+    <div class="dispositivo-arte" aria-hidden="true"><div class="caja-disp"><span class="led-disp"></span><span class="pant-disp">VG</span></div></div>
+    <h1>Vincula tu Vigía</h1>
+    <p class="sub">Escribe el código que viene en la caja y en la parte de atrás de tu dispositivo.</p>
+    <form id="fVincular" class="forma" novalidate>
+      <label>Código del dispositivo <input name="codigo" class="codigo" placeholder="VG-XXXX-XXXX" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false" required></label>
       <p class="error" role="alert"></p>
       <button type="submit" class="boton">Vincular</button>
     </form>
@@ -58,30 +90,70 @@
     <button type="button" class="enlace" data-salir>Cerrar sesión</button>
   </main>
 
-  <!-- App -->
+  <!-- ================= app ================= -->
   <div class="pantalla app" id="pApp" hidden>
     <header class="barra">
-      <img src="/logo.svg" alt="" width="36" height="36">
-      <div><p class="marca">Mi Vigía</p><p class="hola" id="hola"></p></div>
-      <span class="chip" id="conexion">Conectando…</span>
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <div class="saludo"><p class="hola" id="hola"></p><p class="fecha-hoy" id="fechaHoy"></p></div>
+      <span class="chip" id="conexion"><i></i><span>Conectando…</span></span>
+      <button type="button" class="icono" id="bTema" aria-label="Cambiar tema"><svg><use href="#c-luna"/></svg></button>
     </header>
 
     <main>
-      <section id="tInicio" aria-labelledby="hInicio">
+      <!-- Inicio -->
+      <section id="tInicio" class="seccion" aria-labelledby="hInicio">
         <h2 id="hInicio" class="oculto">Inicio</h2>
+        <article class="estado-hogar" id="estadoHogar">
+          <div class="escudo"><span class="aro"></span><span class="aro a2"></span><svg><use href="#c-escudo"/></svg></div>
+          <div><p class="estado-k" id="estadoK">Estado del hogar</p><h3 id="estadoT">Revisando…</h3><p id="estadoD"></p></div>
+        </article>
         <div id="listaDispositivos"></div>
-        <article class="tarjeta consejos">
+        <article class="tarjeta pasos">
           <h3>Si hay un sismo</h3>
           <ol>
-            <li><b>Agáchate</b> al piso.</li>
-            <li><b>Cúbrete</b> bajo una mesa firme o junto a un muro interior.</li>
-            <li><b>Sujétate</b> hasta que pare el movimiento. Aléjate de ventanas.</li>
+            <li><svg><use href="#c-agachate"/></svg><b>Agáchate</b><span>al piso</span></li>
+            <li><svg><use href="#c-cubrete"/></svg><b>Cúbrete</b><span>bajo una mesa firme</span></li>
+            <li><svg><use href="#c-sujetate"/></svg><b>Sujétate</b><span>hasta que pare</span></li>
           </ol>
+          <button type="button" class="boton secundario" id="bPracticar">Practicar un simulacro</button>
+        </article>
+        <article class="tarjeta resumen-plan" data-ir="tPlan" role="button" tabindex="0">
+          <svg class="anillo" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18"/><circle id="anilloPlan" cx="22" cy="22" r="18" pathLength="100" style="--p:0"/></svg>
+          <div><h3>Mi plan de emergencia</h3><p id="resumenPlan"></p></div>
+          <span class="flecha" aria-hidden="true">›</span>
         </article>
         <article class="tarjeta" id="avisoContactos"></article>
       </section>
 
-      <section id="tHistorial" hidden aria-labelledby="hHistorial">
+      <!-- Avisos -->
+      <section id="tAvisos" class="seccion" hidden aria-labelledby="hAvisos">
+        <h2 id="hAvisos">Avisos</h2>
+        <p class="nota">Mensajes de Vigía para tu hogar: simulacros, mantenimientos e información importante.</p>
+        <div id="listaAvisos" class="avisos"></div>
+      </section>
+
+      <!-- Plan de emergencia -->
+      <section id="tPlan" class="seccion" hidden aria-labelledby="hPlan">
+        <h2 id="hPlan">Mi plan de emergencia</h2>
+        <p class="nota">Prepárate con tu familia. Los cambios se guardan solos. <span class="guardado" id="guardado" aria-live="polite"></span></p>
+        <article class="tarjeta">
+          <div class="kit-cabeza">
+            <svg class="anillo grande" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18"/><circle id="anilloKit" cx="22" cy="22" r="18" pathLength="100" style="--p:0"/></svg>
+            <div><h3>Kit de emergencia</h3><p id="kitTexto"></p></div>
+          </div>
+          <div class="kit" id="kit"></div>
+        </article>
+        <form class="tarjeta forma" id="fPlan" novalidate>
+          <h3>Puntos de encuentro</h3>
+          <p class="nota">Dónde se reúne la familia si no están juntos o no pueden volver a casa.</p>
+          <label><span><svg class="ico-etq"><use href="#c-pin"/></svg> Punto principal</span><input name="encuentro" maxlength="120" placeholder="Ej.: Parque de la calle 60"></label>
+          <label><span><svg class="ico-etq"><use href="#c-pin"/></svg> Punto alterno</span><input name="encuentroAlterno" maxlength="120" placeholder="Ej.: Iglesia del barrio"></label>
+          <label>Notas importantes <small>(medicamentos, mascotas, personas que necesitan ayuda)</small><textarea name="notas" maxlength="300" rows="3" placeholder="Ej.: La abuela usa bastón y toma insulina"></textarea></label>
+        </form>
+      </section>
+
+      <!-- Historial -->
+      <section id="tHistorial" class="seccion" hidden aria-labelledby="hHistorial">
         <h2 id="hHistorial">Historial</h2>
         <h3>Alertas de sismo</h3>
         <ul class="lista" id="listaAlertas"></ul>
@@ -89,43 +161,62 @@
         <ul class="lista" id="listaEventos"></ul>
       </section>
 
-      <section id="tAjustes" hidden aria-labelledby="hAjustes">
+      <!-- Ajustes -->
+      <section id="tAjustes" class="seccion" hidden aria-labelledby="hAjustes">
         <h2 id="hAjustes">Ajustes</h2>
         <div id="ajustesDispositivos"></div>
         <article class="tarjeta">
           <h3>Contactos de emergencia</h3>
           <p class="nota">Personas a quienes avisar si marcas «Necesito ayuda». Hasta 5.</p>
-          <ul class="lista" id="listaContactos"></ul>
-          <form id="fContacto" class="form-contacto" novalidate>
+          <ul class="lista contactos" id="listaContactos"></ul>
+          <form id="fContacto" class="forma" novalidate>
             <label>Nombre <input name="nombre" autocomplete="off" required></label>
             <label>Teléfono <input name="telefono" type="tel" inputmode="tel" autocomplete="off" required></label>
             <label>Relación
               <select name="relacion"><option>Familiar</option><option>Vecino</option><option>Amigo</option><option>Otro</option></select>
             </label>
             <p class="error" role="alert"></p>
-            <button type="submit" class="boton secundario">Agregar contacto</button>
+            <button type="submit" class="boton secundario"><svg><use href="#c-mas"/></svg>Agregar contacto</button>
           </form>
         </article>
+        <form class="tarjeta forma" id="fClave" novalidate>
+          <h3>Cambiar contraseña</h3>
+          <label class="campo-clave">Contraseña actual <input name="actual" type="password" autocomplete="current-password" required>
+            <button type="button" class="ver" data-ver aria-label="Mostrar contraseña"><svg><use href="#c-ojo"/></svg></button></label>
+          <label class="campo-clave">Contraseña nueva <small>(8 o más caracteres, con letras y números)</small><input name="nueva" type="password" autocomplete="new-password" required>
+            <button type="button" class="ver" data-ver aria-label="Mostrar contraseña"><svg><use href="#c-ojo"/></svg></button></label>
+          <p class="error" role="alert"></p>
+          <button type="submit" class="boton secundario"><svg><use href="#c-llave"/></svg>Cambiar contraseña</button>
+        </form>
         <div class="acciones">
-          <button type="button" class="boton secundario" id="bOtro">Vincular otro dispositivo</button>
-          <button type="button" class="boton peligro" data-salir>Cerrar sesión</button>
+          <button type="button" class="boton secundario" id="bOtro"><svg><use href="#c-mas"/></svg>Vincular otro dispositivo</button>
+          <button type="button" class="boton peligro" data-salir><svg><use href="#c-salir"/></svg>Cerrar sesión</button>
         </div>
       </section>
     </main>
 
     <nav class="tabs" aria-label="Secciones">
-      <button type="button" data-tab="tInicio" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg>Inicio</button>
-      <button type="button" data-tab="tHistorial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 1-9 9h2a7 7 0 1 0 2.05-4.95L9 9H3V3l2.64 2.64A8.97 8.97 0 0 1 12 3zm-1 4h2v5l4 2.4-1 1.7-5-3z"/></svg>Historial</button>
-      <button type="button" data-tab="tAjustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z"/></svg>Ajustes</button>
+      <span class="tabs-indicador" id="indicador" aria-hidden="true"></span>
+      <button type="button" data-tab="tInicio" aria-current="page"><svg><use href="#c-casa"/></svg>Inicio</button>
+      <button type="button" data-tab="tAvisos"><svg><use href="#c-campana"/></svg>Avisos<span class="insignia" id="insignia" hidden>0</span></button>
+      <button type="button" data-tab="tPlan"><svg><use href="#c-plan"/></svg>Mi plan</button>
+      <button type="button" data-tab="tHistorial"><svg><use href="#c-reloj"/></svg>Historial</button>
+      <button type="button" data-tab="tAjustes"><svg><use href="#c-ajustes"/></svg>Ajustes</button>
     </nav>
   </div>
 
-  <!-- Alerta de sismo a pantalla completa -->
+  <!-- ================= alerta de sismo a pantalla completa ================= -->
   <div class="alerta" id="alerta" role="alertdialog" aria-modal="true" aria-labelledby="alT" aria-describedby="alD" hidden>
+    <span class="ola"></span><span class="ola o2"></span><span class="ola o3"></span>
     <div class="alerta-caja">
-      <p class="alerta-k">Alerta sísmica Vigía</p>
+      <p class="alerta-k" id="alK">Alerta sísmica Vigía</p>
       <h2 id="alT">¡SISMO!</h2>
-      <p class="alerta-paso">Agáchate · Cúbrete · Sujétate</p>
+      <p class="alerta-cuenta" id="alCuenta" aria-hidden="true"></p>
+      <ol class="alerta-pasos" id="alPasos">
+        <li><svg><use href="#c-agachate"/></svg>Agáchate</li>
+        <li><svg><use href="#c-cubrete"/></svg>Cúbrete</li>
+        <li><svg><use href="#c-sujetate"/></svg>Sujétate</li>
+      </ol>
       <p id="alD" class="alerta-d"></p>
       <div class="alerta-botones" id="alBotones">
         <button type="button" class="boton bien" data-resp="bien">Estoy bien</button>
