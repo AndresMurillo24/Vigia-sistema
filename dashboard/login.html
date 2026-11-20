@@ -4,7 +4,7 @@
   Archivo:  dashboard/login.html
   Tipo:     HTML
   Capa:     Capa de presentación · panel de la empresa
-  Qué hace: Página de inicio de sesión del panel.
+  Qué hace: Página de inicio de sesión del panel, con presentación animada de la plataforma.
 -->
 <html lang="es">
 <head>
@@ -12,26 +12,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vigía · Iniciar sesión</title>
   <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <script src="tema.js"></script>
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body class="pagina-login">
-  <main class="login">
-    <img src="logo.svg" alt="" width="64" height="64">
-    <p class="sobre">Plataforma central</p>
-    <h1>Panel de monitoreo Vigía</h1>
-    <p class="nota">Ingresa con tu usuario de operador o administrador.</p>
-    <form id="formLogin" novalidate>
-      <label>Usuario
-        <input id="usuario" name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required>
-      </label>
-      <label>Contraseña
-        <input id="clave" name="clave" type="password" autocomplete="current-password" required>
-      </label>
-      <p class="error" id="error" role="alert"></p>
-      <button type="submit" class="boton">Ingresar</button>
-    </form>
-    <p class="nota" style="margin:10px 0 0;text-align:center"><a href="/cliente/">¿Eres cliente? Entra a Mi Vigía</a></p>
-  </main>
+  <section class="login-arte" aria-hidden="true">
+    <div class="marca-login"><img src="logo.svg" alt="" width="46" height="46">Vigía · Sistemas de Alerta Temprana</div>
+    <svg class="ondas" viewBox="0 0 1400 220" preserveAspectRatio="none">
+      <path d="M0 110 H180 l20-30 20 60 20-90 20 120 20-80 20 40 20-20 H460 l15-20 15 40 15-60 15 80 15-40 H760 l20-40 20 80 20-100 20 120 20-60 H1100 l15-25 15 50 15-30 H1600"/>
+      <path d="M0 130 H260 l14-22 14 44 14-60 14 70 14-32 H620 l12-18 12 36 12-50 12 60 12-28 H980 l14-20 14 40 14-30 H1600"/>
+      <path d="M0 90 H340 l10-14 10 28 10-40 10 50 10-24 H860 l10-16 10 32 10-22 H1600"/>
+    </svg>
+    <div>
+      <h2>Cada segundo de aviso <em>salva vidas.</em></h2>
+      <p>Centro de monitoreo de la red Vigía: dispositivos en los hogares, detección confirmada por varios sensores y aviso inmediato a toda la red.</p>
+    </div>
+    <ul><li>Monitoreo 24/7</li><li>Conexión cifrada</li><li>Respuesta en segundos</li></ul>
+  </section>
+
+  <div class="login-lado">
+    <main class="login">
+      <p class="sobre">Plataforma central</p>
+      <h1>Bienvenido de nuevo</h1>
+      <p class="nota">Ingresa con tu usuario de operador o administrador.</p>
+      <form id="formLogin" novalidate>
+        <label>Usuario
+          <input id="usuario" name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <label class="campo-clave">Contraseña
+          <input id="clave" name="clave" type="password" autocomplete="current-password" required>
+          <button type="button" class="icono ver" id="verClave" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </label>
+        <p class="error" id="error" role="alert"></p>
+        <button type="submit" class="boton">Ingresar al panel</button>
+      </form>
+      <p class="pie-login"><a href="/cliente/">¿Eres cliente? Entra a Mi Vigía</a></p>
+    </main>
+  </div>
   <script src="login.js"></script>
 </body>
 </html>
